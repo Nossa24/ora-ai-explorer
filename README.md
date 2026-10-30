@@ -36,7 +36,7 @@ Parámetros útiles en la URL: `?tod=night` (empieza de noche), `?scan=0` (sin e
 
 `video/ora-ai-reel.mp4`: 1080×1920 (9:16), 37 s, H.264 + AAC, con el mismo formato del reel de referencia (texto arriba y la pantalla de la demo al centro). Se grabó la propia demo cuadro a cuadro a 30 fps.
 
-Música: «Gimme that Groove!» de Michael Ramir C., de Mixkit (Mixkit Stock Music Free License: uso comercial en video y redes, sin atribución obligatoria). La pista está recortada para que su entrada coincida con la primera tarjeta de piso y su golpe fuerte con el clic; está normalizada a -14 LUFS. El archivo de audio suelto no se incluye en el repo.
+Música: «Playground Fun» de Ahjay Stelino, de Mixkit (Mixkit Stock Music Free License: uso comercial en video y redes, sin atribución obligatoria). La pista está recortada para que un pulso marcado caiga justo en el clic al piso y está normalizada a -14 LUFS. El archivo de audio suelto no se incluye en el repo.
 
 ## Cómo se hizo el video interior
 

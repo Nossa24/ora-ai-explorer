@@ -52,6 +52,14 @@ body.is-int #ext { visibility: hidden; }
 }
 .cta:hover { background: #fff1c9; }
 
+.menu-toggle { display: none; }
+.nav[hidden], .menu-toggle[hidden] { display: none; }
+.media-loading:not([hidden]) { position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 18px; background: rgba(5, 10, 20, .86); color: var(--gold-2); font: 500 12px/1.5 var(--sans); letter-spacing: .16em; }
+.media-loading::before { content: ''; width: 28px; height: 28px; border: 1px solid var(--line); border-top-color: var(--gold-2); border-radius: 50%; animation: loading-spin 1s linear infinite; }
+@keyframes loading-spin { to { transform: rotate(360deg); } }
+.back { z-index: 4; }
+.media-status { position: absolute; z-index: 35; left: var(--pad); right: var(--pad); top: 86px; margin: 0; padding: 14px 18px; color: var(--ink); background: var(--glass); border: 1px solid var(--gold); font-size: 13px; }
+
 /* ---------- exterior ---------- */
 #viewport { position: absolute; inset: 0; overflow: hidden; background: #0b1424; touch-action: pan-y; }
 #stage { position: absolute; left: 0; top: 0; width: 1672px; height: 941px; transform-origin: 0 0; will-change: transform; }
@@ -203,7 +211,13 @@ body.mode-amen #hot .pins { display: inline; }
 /* ---------- móvil ---------- */
 @media (max-width: 900px) {
   .brand-sep, .brand-tag { display: none; }
+  .menu-toggle { display: block; margin-left: auto; padding: 10px 14px; border: 1px solid var(--line); background: var(--glass); color: var(--gold-2); cursor: pointer; }
+  .nav { gap: 0; }
   .nav button { display: none; }
+  .nav.open { position: absolute; top: 64px; right: var(--pad); min-width: 210px; padding: 12px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; border: 1px solid var(--line); background: var(--glass); backdrop-filter: blur(12px); }
+  .nav.open button { display: block; padding: 14px; text-align: left; }
+  .nav.open .cta { text-align: center; }
+  .media-status { top: 116px; }
   .tip { left: 16px !important; right: 16px; top: auto !important; bottom: 76px; transform: none !important; min-width: 0; }
   .dot, .tip-line { display: none; }
   .hint { bottom: 84px; transition: opacity .2s; }
@@ -225,5 +239,5 @@ body.mode-amen #hot .pins { display: inline; }
   #vid, #snap { object-fit: contain; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .vwrap.kb, #hot .fl.pent-hint, .hint i, #hot .pin circle.r { animation: none; }
+  .vwrap.kb, #hot .fl.pent-hint, .hint i, #hot .pin circle.r, .media-loading::before { animation: none; }
 }

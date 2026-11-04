@@ -43,3 +43,51 @@ Música: «Playground Fun» de Ahjay Stelino, de Mixkit (Mixkit Stock Music Free
 Los dos clips salen del reel de referencia, que estaba grabado con el celular frente a una laptop. Se les corrigió la perspectiva de la pantalla (cámara fija), se recortó el encabezado y la botonera de la web original, se tapó el panel de texto en inglés que venía incrustado en la maqueta (el panel que ves en la demo es HTML en español) y se re-codificó con GOP corto para que los saltos entre habitaciones sean exactos. Son 1600×874, sin audio.
 
 Para reemplazarlos por renders propios del edificio: exporta el mismo recorrido (maqueta → 3 habitaciones), pon los nuevos MP4 en `media/` y ajusta los `hold` de `js/config.js`.
+
+
+## Desarrollo y pruebas
+
+La aplicación sigue siendo estática: para verla basta con `node server.mjs`.
+Node.js 20 o posterior es necesario para las herramientas de prueba.
+
+```bash
+npm ci
+npx playwright install chromium
+npm test
+```
+
+En Linux, si faltan bibliotecas del navegador, usa `npx playwright install --with-deps chromium`.
+Las pruebas también detectan Chromium en `/usr/bin/chromium`; puedes indicar otro
+binario con `CHROMIUM_PATH=/ruta/a/chromium npm test`.
+El runner arranca y detiene su propio servidor en el puerto 18768, que debe estar libre.
+No hace falta mantener el servidor de desarrollo abierto para ejecutar las pruebas.
+
+La suite comprueba los recursos estáticos, peticiones Range, ambos recorridos y sus
+habitaciones, menú móvil, animaciones, recorrido automático y recuperación ante
+errores de descarga, cargas pendientes, timeout, búsqueda y reproducción fallida.
+También verifica acceso al plano y habitaciones con autoplay bloqueado, indicador
+de carga y ocultación/restauración del menú al entrar y salir del apartamento.
+Los casos de timeout acortan únicamente el límite de espera de video dentro del navegador
+de prueba; el límite real de la aplicación es de 15 segundos por operación.
+
+En móvil, «Menú» permite acceder a Residencias, Penthouses y Amenidades. Se cierra
+al seleccionar un modo, tocar fuera o pulsar Escape. `?scan=0` desactiva el recorrido
+automático durante toda la sesión, también después de volver del interior.
+
+Los videos se cargan bajo demanda al seleccionar un piso, durante el zoom de entrada.
+Si fallan, se recupera la fachada con un aviso; vuelve a seleccionar un piso para
+reintentar. El botón de regreso permite cancelar una carga o transición interior pendiente.
+Los archivos audiovisuales originales se conservan sin cambios.
+
+
+### Correcciones de la auditoría del PR #1
+
+Cuando el navegador rechaza `play()` con `NotAllowedError` (restricción de autoplay),
+el recorrido continúa mostrando el plano y las habitaciones como cuadros pausados
+del mismo video. No requiere habilitar la reproducción automática ni añade recursos.
+Los errores reales de descarga o reproducción conservan la recuperación a la fachada.
+Durante la carga se muestra «Cargando recorrido…», con opción de regresar a la torre.
+El menú principal se oculta y queda fuera del foco durante el recorrido, y se restaura
+al terminar la animación de regreso. El CTA del panel y su configuración no cambian.
+Las restricciones de autoplay se simulan en las pruebas de escritorio y móvil;
+esto no sustituye una comprobación en un dispositivo iOS físico.

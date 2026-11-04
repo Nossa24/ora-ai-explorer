@@ -65,6 +65,8 @@ No hace falta mantener el servidor de desarrollo abierto para ejecutar las prueb
 La suite comprueba los recursos estáticos, peticiones Range, ambos recorridos y sus
 habitaciones, menú móvil, animaciones, recorrido automático y recuperación ante
 errores de descarga, cargas pendientes, timeout, búsqueda y reproducción fallida.
+También verifica acceso al plano y habitaciones con autoplay bloqueado, indicador
+de carga y ocultación/restauración del menú al entrar y salir del apartamento.
 Los casos de timeout acortan únicamente el límite de espera de video dentro del navegador
 de prueba; el límite real de la aplicación es de 15 segundos por operación.
 
@@ -76,3 +78,16 @@ Los videos se cargan bajo demanda al seleccionar un piso, durante el zoom de ent
 Si fallan, se recupera la fachada con un aviso; vuelve a seleccionar un piso para
 reintentar. El botón de regreso permite cancelar una carga o transición interior pendiente.
 Los archivos audiovisuales originales se conservan sin cambios.
+
+
+### Correcciones de la auditoría del PR #1
+
+Cuando el navegador rechaza `play()` con `NotAllowedError` (restricción de autoplay),
+el recorrido continúa mostrando el plano y las habitaciones como cuadros pausados
+del mismo video. No requiere habilitar la reproducción automática ni añade recursos.
+Los errores reales de descarga o reproducción conservan la recuperación a la fachada.
+Durante la carga se muestra «Cargando recorrido…», con opción de regresar a la torre.
+El menú principal se oculta y queda fuera del foco durante el recorrido, y se restaura
+al terminar la animación de regreso. El CTA del panel y su configuración no cambian.
+Las restricciones de autoplay se simulan en las pruebas de escritorio y móvil;
+esto no sustituye una comprobación en un dispositivo iOS físico.

@@ -53,6 +53,11 @@ body.is-int #ext { visibility: hidden; }
 .cta:hover { background: #fff1c9; }
 
 .menu-toggle { display: none; }
+.nav[hidden], .menu-toggle[hidden] { display: none; }
+.media-loading:not([hidden]) { position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 18px; background: rgba(5, 10, 20, .86); color: var(--gold-2); font: 500 12px/1.5 var(--sans); letter-spacing: .16em; }
+.media-loading::before { content: ''; width: 28px; height: 28px; border: 1px solid var(--line); border-top-color: var(--gold-2); border-radius: 50%; animation: loading-spin 1s linear infinite; }
+@keyframes loading-spin { to { transform: rotate(360deg); } }
+.back { z-index: 4; }
 .media-status { position: absolute; z-index: 35; left: var(--pad); right: var(--pad); top: 86px; margin: 0; padding: 14px 18px; color: var(--ink); background: var(--glass); border: 1px solid var(--gold); font-size: 13px; }
 
 /* ---------- exterior ---------- */
@@ -234,5 +239,5 @@ body.mode-amen #hot .pins { display: inline; }
   #vid, #snap { object-fit: contain; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .vwrap.kb, #hot .fl.pent-hint, .hint i, #hot .pin circle.r { animation: none; }
+  .vwrap.kb, #hot .fl.pent-hint, .hint i, #hot .pin circle.r, .media-loading::before { animation: none; }
 }

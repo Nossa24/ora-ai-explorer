@@ -39,6 +39,9 @@ async function plan(page, k = 5) {
 }
 async function exterior(page) {
   await page.waitForFunction(() => ORA_API.state.state === 'ext' && !ORA_API.state.busy && ORA_API.state.mode === null);
+  assert.equal(await page.locator('#mediaLoading').isVisible(), false);
+  assert.equal(await page.locator('#int').getAttribute('aria-busy'), 'false');
+  assert.equal(await page.locator('#nav').evaluate(e => e.hidden || e.inert), false);
 }
 async function shortMediaTimeout(page) {
   await page.addInitScript(() => {
@@ -177,13 +180,80 @@ test('búsqueda de video sin seeked recupera la navegación', async t => {
   await page.locator('#mediaStatus').waitFor({ state: 'visible' }); await exterior(page);
 });
 
-test('reproducción rechazada no bloquea el interior', async t => {
+for (const [device, options] of [
+  ['escritorio', {}],
+  ['móvil con restricciones de autoplay', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }],
+]) {
+  test(`autoplay rechazado permite plano y todas las habitaciones en ${device}`, async t => {
+    const page = await open(t, options);
+    await page.evaluate(() => {
+      const video = document.querySelector('#vid');
+      video.play = () => Promise.reject(new DOMException('Autoplay bloqueado', 'NotAllowedError'));
+    });
+    for (const [k, unit] of [[5, 'res'], [15, 'pent']]) {
+      await plan(page, k);
+      assert.equal(await page.locator('#mediaStatus').isVisible(), false);
+      assert.equal(await page.locator('#mediaLoading').isVisible(), false);
+      assert(await page.locator('#vid').evaluate((v, unit) =>
+        v.paused && v.videoWidth > 0 && v.readyState >= 2 && Math.abs(v.currentTime - ORA.units[unit].plan.hold) < .1, unit));
+      for (let i = 0; i < 3; i++) {
+        await page.locator(i === 0 ? '#pRooms button' : '#chips button').nth(i).click();
+        await page.waitForFunction(({ i, unit }) =>
+          ORA_API.state.mode === 'room' &&
+          document.querySelector('#chips button.on')?.dataset.i === String(i) &&
+          document.querySelector('#vid').paused &&
+          Math.abs(ORA_API.state.t - ORA.units[unit].rooms[i].hold) < .1, { i, unit });
+      }
+      await page.locator('#back').click();
+      await page.waitForFunction(() => ORA_API.state.mode === 'plan');
+      await page.locator('#pBack').click(); await exterior(page);
+    }
+  });
+}
+
+test('fallo real de reproducción conserva la recuperación a la fachada', async t => {
   const page = await open(t);
-  await page.evaluate(() => { document.querySelector('#vid').play = () => Promise.reject(new Error('Reproducción bloqueada')); });
+  await page.evaluate(() => { document.querySelector('#vid').play = () => Promise.reject(new DOMException('Formato no compatible', 'NotSupportedError')); });
   await page.evaluate(() => ORA_API.enter('day', 'T1', 5));
   await page.locator('#mediaStatus').waitFor({ state: 'visible' }); await exterior(page);
 });
 
+for (const width of [390, 1440]) {
+  test(`menú oculto e indicador de carga durante la entrada a ${width}px`, async t => {
+    const page = await open(t, { viewport: { width, height: 844 }, isMobile: width < 900, hasTouch: width < 900 });
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    t.after(() => release());
+    await page.route('**/media/*.mp4', async route => { await gate; await route.continue(); });
+    if (width < 900) await page.locator('#menuToggle').click();
+    await page.evaluate(() => ORA_API.enter('day', 'T1', 5));
+    await page.locator('#mediaLoading').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#int').getAttribute('aria-busy'), 'true');
+    assert.equal(await page.locator('#nav').isVisible(), false);
+    assert.equal(await page.locator('#menuToggle').isVisible(), false);
+    assert.equal(await page.locator('#menuToggle').getAttribute('aria-expanded'), 'false');
+    assert(await page.locator('#nav').evaluate(e => e.inert));
+    assert(await page.locator('#back').isVisible(), 'se puede cancelar durante la carga');
+    release();
+    await page.waitForFunction(() => ORA_API.state.mode === 'plan' && ORA_API.state.state === 'int');
+    assert.equal(await page.locator('#mediaLoading').isVisible(), false);
+    assert.equal(await page.locator('#int').getAttribute('aria-busy'), 'false');
+    assert.equal(await page.locator('#nav').isVisible(), false);
+    await page.locator('#pRooms button').nth(1).click();
+    await page.waitForFunction(() => ORA_API.state.mode === 'room');
+    assert.equal(await page.locator('#nav').isVisible(), false);
+    assert.equal(await page.locator('#menuToggle').isVisible(), false);
+    await page.locator('#back').click();
+    await page.waitForFunction(() => ORA_API.state.mode === 'plan');
+    await page.locator('#pBack').click(); await exterior(page);
+    if (width < 900) {
+      assert(await page.locator('#menuToggle').isVisible());
+      await page.locator('#menuToggle').click();
+      await page.locator('[data-mode="amen"]').click();
+      assert(await page.locator('body').evaluate(e => e.classList.contains('mode-amen')));
+    } else assert(await page.locator('[data-mode="amen"]').isVisible());
+  });
+}
 
 test('animaciones normales y recorrido en pantalla móvil', async t => {
   const page = await open(t, { reducedMotion: 'no-preference', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });

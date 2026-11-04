@@ -23,7 +23,7 @@
     int: $('#int'), fx: $('#fx'), vwrap: $('#vwrap'), vid: $('#vid'), snap: $('#snap'),
     back: $('#back'), backTxt: $('#backTxt'), cap: $('#cap'), capK: $('#capK'), capT: $('#capT'),
     chips: $('#chips'), panel: $('#panel'),
-    nav: $('#nav'), menuToggle: $('#menuToggle'), mediaStatus: $('#mediaStatus'),
+    nav: $('#nav'), menuToggle: $('#menuToggle'), mediaStatus: $('#mediaStatus'), loading: $('#mediaLoading'),
   };
 
   // marca y textos
@@ -291,6 +291,7 @@
     el.menuToggle.setAttribute('aria-expanded', 'false');
   }
   el.menuToggle.addEventListener('click', () => {
+    if (cur) return;
     const open = el.menuToggle.getAttribute('aria-expanded') !== 'true';
     el.nav.classList.toggle('open', open);
     el.menuToggle.setAttribute('aria-expanded', String(open));
@@ -298,6 +299,18 @@
   document.addEventListener('click', e => {
     if (!el.nav.contains(e.target) && !el.menuToggle.contains(e.target)) closeMenu();
   });
+
+  function setInteriorNavigation(interior) {
+    closeMenu();
+    el.nav.hidden = interior;
+    el.nav.inert = interior;
+    el.menuToggle.hidden = interior;
+    el.menuToggle.inert = interior;
+  }
+  function setLoading(loading) {
+    el.loading.hidden = !loading;
+    el.int.setAttribute('aria-busy', String(loading));
+  }
 
   // modos del menú: residencias / penthouses / amenidades
   el.nav.addEventListener('click', e => {
@@ -351,10 +364,11 @@
 
   function enter(h) {
     if (busy || state !== 'ext') return;
-    closeMenu();
+    setInteriorNavigation(true);
+    setLoading(true);
     el.mediaStatus.hidden = true;
     busy = true; stopScan(); clearTimeout(idleTimer);
-    cur = { h, unitKey: h.unitKey, unit: h.unit, mode: 'intro', room: 0, busy: true, controller: new AbortController(), exiting: false };
+    cur = { h, unitKey: h.unitKey, unit: h.unit, mode: 'intro', room: 0, busy: true, controller: new AbortController(), exiting: false, staticPlayback: false };
     // Una sola carga, iniciada durante el zoom; los errores se consumen al iniciar el interior.
     cur.ready = ensureSrc(h.unit.clip).then(() => null, error => error);
     prepareInterior();
@@ -392,11 +406,12 @@
     if (!cur || cur.exiting) return;
     const session = cur;
     session.exiting = true;
+    setLoading(false);
     session.controller.abort();
     cancelStopper();
     vid.pause();
     busy = true;
-    gsap.to([el.panel, el.chips, el.cap, el.back], { autoAlpha: 0, duration: .25 });
+    gsap.to([el.panel, el.chips, el.cap, el.back], { autoAlpha: 0, duration: .25, overwrite: 'auto' });
     const reverse = () => {
       if (cur !== session) return;
       document.body.classList.remove('is-int'); document.body.classList.add('is-ext');
@@ -415,6 +430,8 @@
   }
   function afterExit() {
     cur?.controller.abort();
+    setLoading(false);
+    setInteriorNavigation(false);
     el.fx.innerHTML = '';
     gsap.set(el.flash, { opacity: 0 });
     gsap.set(el.snap, { opacity: 0 });
@@ -439,7 +456,7 @@
   function waitMedia(check, { signal = cur?.controller.signal, start = () => {} } = {}) {
     return new Promise((resolve, reject) => {
       let frame = 0, timer, settled = false;
-      const events = ['loadeddata', 'seeked', 'timeupdate', 'ended', 'error'];
+      const events = ['loadedmetadata', 'loadeddata', 'seeked', 'timeupdate', 'ended', 'error'];
       const cleanup = () => {
         clearTimeout(timer); cancelAnimationFrame(frame);
         events.forEach(event => vid.removeEventListener(event, inspect));
@@ -466,8 +483,8 @@
     });
   }
   function ensureSrc(url) {
-    if (vid.dataset.src === url && vid.readyState >= 2 && !vid.error) return Promise.resolve();
-    return waitMedia(() => vid.readyState >= 2, { start: () => {
+    if (vid.dataset.src === url && vid.readyState >= 1 && !vid.error) return Promise.resolve();
+    return waitMedia(() => vid.readyState >= 1, { start: () => {
       vid.preload = 'auto'; vid.dataset.src = url; vid.src = url; vid.load();
     } });
   }
@@ -496,25 +513,37 @@
       const error = await session.ready;
       if (error) throw error;
       if (session.controller.signal.aborted) return;
-      await dissolve(0, { fade: 0 });
+      // Los metadatos bastan para buscar un cuadro aunque iOS restrinja play().
+      vid.currentTime = 0;
       await playUntil(session.unit.plan.hold);
       if (cur === session && !session.controller.signal.aborted) onPlan();
     } catch (_) { mediaFailure(session); }
   }
   async function playUntil(t) {
+    if (cur.staticPlayback) { await dissolve(t); return; }
     cancelStopper();
     const controller = new AbortController();
-    const sessionSignal = cur.controller.signal;
+    const session = cur;
+    const sessionSignal = session.controller.signal;
     const abort = () => controller.abort();
     sessionSignal.addEventListener('abort', abort, { once: true });
     if (sessionSignal.aborted) abort();
     stopper = { cancel: abort };
     try {
-      await waitMedia(() => vid.currentTime >= t - 0.02, { signal: controller.signal, start: () => {
-        vid.play().catch(() => controller.abort());
+      let playbackError;
+      await waitMedia(() => {
+        if (playbackError) throw playbackError;
+        return vid.currentTime >= t - 0.02;
+      }, { signal: controller.signal, start: () => {
+        vid.play().catch(error => { playbackError = error; });
       } });
       vid.pause();
       if (Math.abs(vid.currentTime - t) > 0.04) await dissolve(t, { fade: 0 });
+    } catch (error) {
+      if (error.name !== 'NotAllowedError' || sessionSignal.aborted) throw error;
+      // El bloqueo de autoplay no es un fallo del archivo: muestra sus cuadros en pausa.
+      session.staticPlayback = true;
+      await dissolve(t);
     } finally {
       sessionSignal.removeEventListener('abort', abort);
       stopper = null;
@@ -530,19 +559,20 @@
       gsap.set(el.snap, { opacity: 1 });
     } catch (_) { /* El primer cuadro todavía puede no estar disponible. */ }
     if (Math.abs(vid.currentTime - t) >= 0.01 || vid.seeking) {
-      await waitMedia(() => !vid.seeking && Math.abs(vid.currentTime - t) < .1,
+      await waitMedia(() => vid.readyState >= 2 && !vid.seeking && Math.abs(vid.currentTime - t) < .1,
         { signal, start: () => { vid.currentTime = t; } });
     }
     // Espera a que el navegador pinte el nuevo cuadro antes de retirar la captura.
     let frames = 0;
-    await waitMedia(() => ++frames >= 3, { signal });
+    await waitMedia(() => vid.readyState >= 2 && ++frames >= 3, { signal });
     gsap.to(el.snap, { opacity: 0, duration: reduce ? 0 : fade, ease: 'power1.inOut' });
   }
 
-  function showUI(list) { gsap.to(list, { autoAlpha: 1, duration: .5, ease: 'power1.out' }); }
-  function hideUI(list) { gsap.to(list, { autoAlpha: 0, duration: .25 }); }
+  function showUI(list) { gsap.to(list, { autoAlpha: 1, duration: .5, ease: 'power1.out', overwrite: 'auto' }); }
+  function hideUI(list) { gsap.to(list, { autoAlpha: 0, duration: .25, overwrite: 'auto' }); }
 
   function onPlan() {
+    setLoading(false);
     cur.mode = 'plan'; cur.busy = false;
     el.backTxt.textContent = 'Volver a la torre';
     showUI([el.panel, el.back]);
@@ -565,7 +595,7 @@
     const u = cur.unit;
     hideUI([el.panel, el.cap]);
     try {
-      if (cur.mode === 'plan' && i === 0) {
+      if (cur.mode === 'plan' && i === 0 && !cur.staticPlayback) {
         await dissolve(u.plan.resume, { fade: .45 });
         if (session.controller.signal.aborted) return;
         cur.mode = 'flying';

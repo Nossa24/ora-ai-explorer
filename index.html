@@ -28,6 +28,7 @@
       <span class="brand-sep"></span>
       <span class="brand-tag" data-brand="tag">Explorador de torres</span>
     </a>
+    <button type="button" class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="nav">Menú</button>
     <nav class="nav" id="nav" aria-label="Secciones">
       <button type="button" data-mode="res" class="on">Residencias</button>
       <button type="button" data-mode="pent">Penthouses</button>
@@ -66,7 +67,7 @@
   <!-- ===================== INTERIOR ===================== -->
   <section id="int" class="view" aria-label="Interior">
     <div class="vwrap" id="vwrap">
-      <video id="vid" muted playsinline preload="auto" disablepictureinpicture></video>
+      <video id="vid" muted playsinline preload="none" disablepictureinpicture></video>
       <canvas id="snap"></canvas>
     </div>
     <div class="vshade"></div>
@@ -95,6 +96,8 @@
       </div>
     </aside>
   </section>
+
+  <p id="mediaStatus" class="media-status" role="status" hidden></p>
 
   <!-- capa de transición (se rellena por JS) -->
   <div id="fx" aria-hidden="true"></div>

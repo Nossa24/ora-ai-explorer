@@ -9,6 +9,7 @@
   const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const qs = new URLSearchParams(location.search);
+  const scanEnabled = qs.get('scan') !== '0';
   const isTouch = matchMedia('(hover: none)').matches;
 
   if (qs.has('debug')) document.body.classList.add('debug');
@@ -22,7 +23,7 @@
     int: $('#int'), fx: $('#fx'), vwrap: $('#vwrap'), vid: $('#vid'), snap: $('#snap'),
     back: $('#back'), backTxt: $('#backTxt'), cap: $('#cap'), capK: $('#capK'), capT: $('#capT'),
     chips: $('#chips'), panel: $('#panel'),
-    nav: $('#nav'),
+    nav: $('#nav'), menuToggle: $('#menuToggle'), mediaStatus: $('#mediaStatus'),
   };
 
   // marca y textos
@@ -196,21 +197,31 @@
   // ---------------------------------------------------------------- recorrido automático (modo escaparate)
   const SCAN = {
     res:  [['T2R', 5], ['T2R', 8], ['T2L', 11], ['T2R', 12], ['T2L', 7], ['T1', 6], ['T1', 11], ['T2R', 9]],
-    pent: [['T2R', 16], ['T2R', 15], ['T1', 16], ['T1', 15]],
   };
   let scanTimer = null, scanI = 0, idleTimer = null;
   function scanStep() {
-    if (state !== 'ext' || busy || mode === 'amen') return;
-    const seq = SCAN[mode] || SCAN.res;
+    scanTimer = null;
+    if (!scanEnabled || state !== 'ext' || busy || mode === 'amen') return;
+    const seq = mode === 'pent'
+      ? C.images[tod].planes.filter(p => p.id === 'T1' || p.id === 'T2R').flatMap(p => {
+        const tower = C.towers[p.tower];
+        return Array.from({ length: tower.pent }, (_, i) => [p.id, tower.floors - i]);
+      })
+      : SCAN.res;
+    if (!seq.length) return;
     const [id, k] = seq[scanI++ % seq.length];
     const p = polys[tod][id] && polys[tod][id][k];
     if (p) setHover(p.node);
     scanTimer = setTimeout(scanStep, 1050);
   }
-  function startScan(delay = 900) { stopScan(); scanTimer = setTimeout(scanStep, delay); }
+  function startScan(delay = 900) {
+    stopScan();
+    if (scanEnabled && state === 'ext' && !busy && mode !== 'amen') scanTimer = setTimeout(scanStep, delay);
+  }
   function stopScan() { clearTimeout(scanTimer); scanTimer = null; }
   function userActive() {
     stopScan(); clearTimeout(idleTimer);
+    if (!scanEnabled || mode === 'amen') return;
     idleTimer = setTimeout(() => { if (state === 'ext' && !busy) { setHover(null); startScan(400); } }, 14000);
   }
 
@@ -250,7 +261,8 @@
   el.tip.addEventListener('pointerleave', () => scheduleClear());
   el.tip.addEventListener('click', () => { if (hov && !busy) enter(hov); });
   addEventListener('keydown', e => {
-    if (state === 'ext') { if (e.key === 'Enter' && hov && !busy) enter(hov); return; }
+    if (e.key === 'Escape' && el.menuToggle.getAttribute('aria-expanded') === 'true') { closeMenu(); el.menuToggle.focus(); return; }
+    if (state === 'ext') { if (e.key === 'Enter' && e.target === document.body && hov && !busy) enter(hov); return; }
     if (e.key === 'Escape') onBack();
     if (!cur || cur.mode !== 'room') return;
     if (e.key === 'ArrowRight') goRoom((cur.room + 1) % cur.unit.rooms.length);
@@ -274,10 +286,28 @@
     userActive();
   }
 
+  function closeMenu() {
+    el.nav.classList.remove('open');
+    el.menuToggle.setAttribute('aria-expanded', 'false');
+  }
+  el.menuToggle.addEventListener('click', () => {
+    const open = el.menuToggle.getAttribute('aria-expanded') !== 'true';
+    el.nav.classList.toggle('open', open);
+    el.menuToggle.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', e => {
+    if (!el.nav.contains(e.target) && !el.menuToggle.contains(e.target)) closeMenu();
+  });
+
   // modos del menú: residencias / penthouses / amenidades
   el.nav.addEventListener('click', e => {
     const b = e.target.closest('button[data-mode]');
+    if (e.target.closest('a')) closeMenu();
     if (!b || busy || state !== 'ext') return;
+    const wasOpen = el.nav.classList.contains('open');
+    closeMenu();
+    if (wasOpen) el.menuToggle.focus();
+    clearTimeout(idleTimer);
     mode = b.dataset.mode;
     el.nav.querySelectorAll('button').forEach(n => n.classList.toggle('on', n === b));
     applyMode();
@@ -321,9 +351,12 @@
 
   function enter(h) {
     if (busy || state !== 'ext') return;
+    closeMenu();
+    el.mediaStatus.hidden = true;
     busy = true; stopScan(); clearTimeout(idleTimer);
-    cur = { h, unitKey: h.unitKey, unit: h.unit, mode: 'intro', room: 0, busy: true };
-    ensureSrc(h.unit.clip);
+    cur = { h, unitKey: h.unitKey, unit: h.unit, mode: 'intro', room: 0, busy: true, controller: new AbortController(), exiting: false };
+    // Una sola carga, iniciada durante el zoom; los errores se consumen al iniciar el interior.
+    cur.ready = ensureSrc(h.unit.clip).then(() => null, error => error);
     prepareInterior();
 
     const vw = innerWidth, vh = innerHeight;
@@ -355,19 +388,36 @@
     tl.timeScale(1).play(0);
   }
 
-  function exitToTower() {
-    if (busy || state !== 'int' || !cur || cur.busy) return;
-    busy = true; cur.busy = true;
+  function exitToTower(failed = false) {
+    if (!cur || cur.exiting) return;
+    const session = cur;
+    session.exiting = true;
+    session.controller.abort();
     cancelStopper();
+    vid.pause();
+    busy = true;
     gsap.to([el.panel, el.chips, el.cap, el.back], { autoAlpha: 0, duration: .25 });
-    dissolve(0.04, { fade: .5 }).then(() => {
+    const reverse = () => {
+      if (cur !== session) return;
       document.body.classList.remove('is-int'); document.body.classList.add('is-ext');
       state = 'ext';
-      tl.timeScale(1.15).reverse();
-    });
+      if (tl.time() === 0) { tl.kill(); afterExit(); }
+      else tl.timeScale(1.15).reverse();
+    };
+    if (failed || session.busy || vid.readyState < 2) reverse();
+    else dissolve(0.04, { fade: .5, signal: null }).catch(() => {}).finally(reverse);
+  }
+  function mediaFailure(session) {
+    if (cur !== session || session.controller.signal.aborted) return;
+    el.mediaStatus.textContent = 'No se pudo reproducir el recorrido. Selecciona un piso para volver a intentarlo.';
+    el.mediaStatus.hidden = false;
+    exitToTower(true);
   }
   function afterExit() {
+    cur?.controller.abort();
     el.fx.innerHTML = '';
+    gsap.set(el.flash, { opacity: 0 });
+    gsap.set(el.snap, { opacity: 0 });
     gsap.set([el.stage, el.fx, el.int], { clearProps: 'visibility,opacity' });
     gsap.set(el.stage, { autoAlpha: 1 });
     gsap.set(el.fx, { autoAlpha: 0 });
@@ -384,11 +434,44 @@
   const vid = el.vid;
   let stopper = null;
   function cancelStopper() { if (stopper) { stopper.cancel(); stopper = null; } }
-  function ensureSrc(url) {
-    if (vid.dataset.src === url && vid.readyState >= 2) return Promise.resolve();
-    vid.dataset.src = url; vid.src = url; vid.load();
-    return new Promise(res => vid.addEventListener('loadeddata', res, { once: true }));
+  const MEDIA_TIMEOUT = 15000;
+  // Todos los listeners, cuadros y temporizadores se limpian al terminar o salir.
+  function waitMedia(check, { signal = cur?.controller.signal, start = () => {} } = {}) {
+    return new Promise((resolve, reject) => {
+      let frame = 0, timer, settled = false;
+      const events = ['loadeddata', 'seeked', 'timeupdate', 'ended', 'error'];
+      const cleanup = () => {
+        clearTimeout(timer); cancelAnimationFrame(frame);
+        events.forEach(event => vid.removeEventListener(event, inspect));
+        signal?.removeEventListener('abort', aborted);
+      };
+      const finish = error => {
+        if (settled) return;
+        settled = true; cleanup(); error ? reject(error) : resolve();
+      };
+      const aborted = () => finish(new DOMException('Recorrido cancelado', 'AbortError'));
+      const inspect = () => {
+        if (settled) return;
+        try {
+          if (vid.error) return finish(new Error('Error de video'));
+          if (check()) return finish();
+          cancelAnimationFrame(frame); frame = requestAnimationFrame(inspect);
+        } catch (error) { finish(error); }
+      };
+      if (signal?.aborted) return aborted();
+      events.forEach(event => vid.addEventListener(event, inspect));
+      signal?.addEventListener('abort', aborted, { once: true });
+      timer = setTimeout(() => finish(new Error('Tiempo de espera de video agotado')), MEDIA_TIMEOUT);
+      try { start(); inspect(); } catch (error) { finish(error); }
+    });
   }
+  function ensureSrc(url) {
+    if (vid.dataset.src === url && vid.readyState >= 2 && !vid.error) return Promise.resolve();
+    return waitMedia(() => vid.readyState >= 2, { start: () => {
+      vid.preload = 'auto'; vid.dataset.src = url; vid.src = url; vid.load();
+    } });
+  }
+  vid.addEventListener('error', () => { if (cur) mediaFailure(cur); });
   function prepareInterior() {
     gsap.set([el.panel, el.chips, el.cap, el.back], { autoAlpha: 0 });
     const u = cur.unit;
@@ -406,57 +489,54 @@
   }
 
   async function startInterior() {
-    const u = cur.unit;
-    await ensureSrc(u.clip);
-    vid.currentTime = 0;
-    try { await vid.play(); } catch (_) { /* autoplay bloqueado: se queda en el primer cuadro */ }
-    playUntil(u.plan.hold, onPlan);
+    const session = cur;
+    try {
+      el.backTxt.textContent = 'Volver a la torre';
+      showUI([el.back]);
+      const error = await session.ready;
+      if (error) throw error;
+      if (session.controller.signal.aborted) return;
+      await dissolve(0, { fade: 0 });
+      await playUntil(session.unit.plan.hold);
+      if (cur === session && !session.controller.signal.aborted) onPlan();
+    } catch (_) { mediaFailure(session); }
   }
-  // Reproduce hasta el segundo t y se queda ahí. Tres seguros: callback por cuadro de video (o rAF),
-  // y un temporizador por si la pestaña está en segundo plano y el navegador frena los cuadros.
-  function playUntil(t, cb) {
+  async function playUntil(t) {
     cancelStopper();
-    let done = false, raf = 0, rvfc = 0, timer = 0;
-    const cancel = () => {
-      done = true; cancelAnimationFrame(raf); clearTimeout(timer);
-      if (rvfc && vid.cancelVideoFrameCallback) vid.cancelVideoFrameCallback(rvfc);
-    };
-    const finish = () => {
-      if (done) return;
-      cancel(); stopper = null; vid.pause();
-      if (Math.abs(vid.currentTime - t) > 0.04) vid.currentTime = t;   // cae exactamente en el cuadro de reposo
-      cb && cb();
-    };
-    const schedule = () => { if (vid.requestVideoFrameCallback) rvfc = vid.requestVideoFrameCallback(check); else raf = requestAnimationFrame(check); };
-    const check = () => { if (done) return; if (vid.currentTime >= t - 0.02 || vid.ended) finish(); else schedule(); };
-    const guard = () => {
-      if (done) return;
-      const rem = t - vid.currentTime;
-      if (rem <= 0.12 || vid.ended) finish(); else timer = setTimeout(guard, Math.max(60, rem * 1000));
-    };
-    stopper = { cancel };
-    vid.play().catch(() => {});
-    schedule();
-    timer = setTimeout(guard, Math.max(60, (t - vid.currentTime) * 1000));
+    const controller = new AbortController();
+    const sessionSignal = cur.controller.signal;
+    const abort = () => controller.abort();
+    sessionSignal.addEventListener('abort', abort, { once: true });
+    if (sessionSignal.aborted) abort();
+    stopper = { cancel: abort };
+    try {
+      await waitMedia(() => vid.currentTime >= t - 0.02, { signal: controller.signal, start: () => {
+        vid.play().catch(() => controller.abort());
+      } });
+      vid.pause();
+      if (Math.abs(vid.currentTime - t) > 0.04) await dissolve(t, { fade: 0 });
+    } finally {
+      sessionSignal.removeEventListener('abort', abort);
+      stopper = null;
+    }
   }
-  // disolvencia entre dos tiempos del mismo video (congela el cuadro actual en un canvas y lo desvanece)
-  function dissolve(t, { fade = .5 } = {}) {
-    return new Promise(res => {
-      cancelStopper(); vid.pause();
-      el.vwrap.classList.remove('kb');
-      try {
-        el.snap.width = vid.videoWidth || 1600; el.snap.height = vid.videoHeight || 874;
-        el.snap.getContext('2d').drawImage(vid, 0, 0, el.snap.width, el.snap.height);
-        gsap.set(el.snap, { opacity: 1 });
-      } catch (_) { /* sin snapshot: salto directo */ }
-      const done = () => requestAnimationFrame(() => requestAnimationFrame(() => {
-        gsap.to(el.snap, { opacity: 0, duration: reduce ? 0 : fade, ease: 'power1.inOut' });
-        res();
-      }));
-      if (Math.abs(vid.currentTime - t) < 0.01) { done(); return; }
-      vid.addEventListener('seeked', done, { once: true });
-      vid.currentTime = t;
-    });
+  // Conserva la disolvencia visual, pero una búsqueda fallida ya no bloquea la interfaz.
+  async function dissolve(t, { fade = .5, signal = cur?.controller.signal } = {}) {
+    cancelStopper(); vid.pause();
+    el.vwrap.classList.remove('kb');
+    try {
+      el.snap.width = vid.videoWidth || 1600; el.snap.height = vid.videoHeight || 874;
+      el.snap.getContext('2d').drawImage(vid, 0, 0, el.snap.width, el.snap.height);
+      gsap.set(el.snap, { opacity: 1 });
+    } catch (_) { /* El primer cuadro todavía puede no estar disponible. */ }
+    if (Math.abs(vid.currentTime - t) >= 0.01 || vid.seeking) {
+      await waitMedia(() => !vid.seeking && Math.abs(vid.currentTime - t) < .1,
+        { signal, start: () => { vid.currentTime = t; } });
+    }
+    // Espera a que el navegador pinte el nuevo cuadro antes de retirar la captura.
+    let frames = 0;
+    await waitMedia(() => ++frames >= 3, { signal });
+    gsap.to(el.snap, { opacity: 0, duration: reduce ? 0 : fade, ease: 'power1.inOut' });
   }
 
   function showUI(list) { gsap.to(list, { autoAlpha: 1, duration: .5, ease: 'power1.out' }); }
@@ -480,38 +560,42 @@
   async function goRoom(i) {
     if (!cur || cur.busy || state !== 'int') return;
     if (cur.mode === 'room' && cur.room === i) return;
+    const session = cur;
     cur.busy = true;
     const u = cur.unit;
     hideUI([el.panel, el.cap]);
-    if (cur.mode === 'plan' && i === 0) {
-      // vuelo de la cámara hacia la sala (el video sigue desde un punto sin rótulos)
-      hideUI([el.back]);
-      await dissolve(u.plan.resume, { fade: .45 });
-      cur.mode = 'flying';
-      playUntil(u.rooms[0].hold, () => enterRoom(0));
-    } else {
-      await dissolve(u.rooms[i].hold, { fade: .55 });
-      enterRoom(i);
-    }
+    try {
+      if (cur.mode === 'plan' && i === 0) {
+        await dissolve(u.plan.resume, { fade: .45 });
+        if (session.controller.signal.aborted) return;
+        cur.mode = 'flying';
+        await playUntil(u.rooms[0].hold);
+      } else await dissolve(u.rooms[i].hold, { fade: .55 });
+      if (cur === session && !session.controller.signal.aborted) enterRoom(i);
+    } catch (_) { mediaFailure(session); }
   }
   async function goPlan() {
     if (!cur || cur.busy) return;
+    const session = cur;
     cur.busy = true;
-    hideUI([el.cap, el.chips, el.back]);
-    await dissolve(cur.unit.plan.hold, { fade: .5 });
-    onPlan();
+    hideUI([el.cap, el.chips]);
+    try {
+      await dissolve(cur.unit.plan.hold, { fade: .5 });
+      if (cur === session && !session.controller.signal.aborted) onPlan();
+    } catch (_) { mediaFailure(session); }
   }
   function onBack() {
-    if (!cur || cur.busy || state !== 'int') return;
-    if (cur.mode === 'room') goPlan(); else exitToTower();
+    if (!cur || cur.exiting) return;
+    if (cur.mode === 'room' && !cur.busy) goPlan(); else exitToTower();
   }
   el.back.addEventListener('click', onBack);
-  $('#pBack').addEventListener('click', exitToTower);
+  $('#pBack').addEventListener('click', () => exitToTower());
   $('#cta').addEventListener('click', e => { if (C.brand.cta.href === '#') e.preventDefault(); });
   $('#pPlan').addEventListener('click', e => { if (C.brand.cta.href === '#') e.preventDefault(); });
 
   // ---------------------------------------------------------------- arranque
   addEventListener('resize', () => {
+    if (innerWidth > 900) closeMenu();
     if (state !== 'ext' || busy) return;
     view = fitView(); applyView();
     if (hov) positionTip(hov);
@@ -525,11 +609,8 @@
     }
     view = fitView(); applyView();
     applyMode();
-    if (qs.get('scan') !== '0') startScan(1600);
-    // precarga silenciosa de los dos clips
-    setTimeout(() => {
-      for (const k in C.units) { const v = document.createElement('video'); v.preload = 'auto'; v.muted = true; v.src = C.units[k].clip; }
-    }, 1200);
+    startScan(1600);
+    // Los videos se cargan al elegir una unidad, durante la transición de entrada.
   }
   init();
 

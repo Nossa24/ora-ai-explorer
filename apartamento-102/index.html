@@ -65,13 +65,16 @@
       </section>
       <section data-pane="capas" role="tabpanel" aria-label="Capas" hidden>
         <div class="p-k">Propuesta de diseño</div>
-        <label class="switch prop"><input type="checkbox" id="layerBalcony" checked> Balcón de 4,01 m² <small>no figura en los planos</small></label>
+        <label class="switch prop"><input type="checkbox" id="layerBalcony" checked> Balcón de 4,04 m² <small>no figura en los planos</small></label>
         <div class="p-k">Capas</div>
         <label class="switch"><input type="checkbox" id="layerFurniture" checked> Mobiliario de presentación</label>
         <label class="switch"><input type="checkbox" id="layerDims"> Cotas del plano</label>
         <label class="switch"><input type="checkbox" id="layerOriginal"> Planta original del DWG <small class="q">líneas rojas</small></label>
         <label class="switch"><input type="checkbox" id="layerVerified"> Solo envolvente del DWG</label>
-        <label class="switch"><input type="checkbox" id="layerQuality"> Calidad alta <small class="q">sombras de contacto</small></label>
+        <div class="p-k">Luz</div>
+        <div class="presets seg2" id="hora" role="group" aria-label="Hora del día"><button type="button" data-h="dia" aria-pressed="true">Día</button><button type="button" data-h="atardecer" aria-pressed="false">Atardecer</button></div>
+        <div class="p-k">Calidad gráfica</div>
+        <div class="presets" id="calidad" role="group" aria-label="Calidad gráfica"><button type="button" data-q="baja">Baja</button><button type="button" data-q="media">Media</button><button type="button" data-q="alta">Alta</button></div>
         <div class="p-k">Leyenda</div>
         <ul class="legend">
           <li class="verificado">Envolvente, vanos y ductos del DWG</li>
@@ -80,7 +83,7 @@
           <li class="propuesta">Redistribución y balcón propuestos</li>
         </ul>
         <p class="note">Rediseño conceptual, no planta verificada. Del DWG: envolvente, vanos de fachada, acceso y ductos. Tabiques, baños, cocina y balcón: propuesta. Alturas (2,40 m): provisionales. Acabados, muebles y paisaje: ilustrativos. <a href="PROPUESTA.md" target="_blank" rel="noopener">Propuesta</a></p>
-        <p class="note">Sofá «GlamVelvetSofa» (CC BY 4.0) y butaca «SheenChair» (CC0): Wayfair LLC, vía Khronos glTF-Sample-Assets. <a href="modelo/muebles/CREDITOS.md" target="_blank" rel="noopener">Créditos</a></p>
+        <p class="note">Sofá «GlamVelvetSofa» (CC BY 4.0) y butaca «SheenChair» (CC0): Wayfair LLC, vía Khronos glTF-Sample-Assets. Cielo HDRI de Poly Haven (CC0). Árboles generados con ez-tree (MIT). <a href="CREDITOS.md" target="_blank" rel="noopener">Créditos</a></p>
       </section>
     </div>
   </aside>

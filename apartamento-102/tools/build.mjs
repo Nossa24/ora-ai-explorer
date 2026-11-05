@@ -20,9 +20,17 @@ const propuesta = geo.balcon;
 // muebles de terceros preparados con tools/preparar_muebles.py (créditos en modelo/muebles/CREDITOS.md)
 const muebles = Object.fromEntries(readdirSync(join(root, 'modelo/muebles')).filter(f => f.endsWith('.glb'))
   .map(f => [f.replace(/\.glb$/, ''), readFileSync(join(root, 'modelo/muebles', f)).toString('base64')]));
+// texturas PBR propias (tools/texturas_pbr.py) y exterior conceptual (HDRI CC0 y hojas/corteza para ez-tree)
+const tdir = join(root, 'modelo/texturas'), edir = join(root, 'modelo/exterior');
+const b64 = p => readFileSync(p).toString('base64');
+const texturas = { escala: JSON.parse(readFileSync(join(tdir, 'escala.json'), 'utf8')),
+  img: Object.fromEntries(readdirSync(tdir).filter(f => f.endsWith('.jpg')).map(f => [f.replace(/\.jpg$/, ''), b64(join(tdir, f))])) };
+const exterior = { ...JSON.parse(readFileSync(join(edir, 'hdri.json'), 'utf8')), hdr: b64(join(edir, 'parque.hdr')),
+  hojas: Object.fromEntries(readdirSync(edir).filter(f => /^hoja_.*\.png$/.test(f)).map(f => [f.slice(5, -4), b64(join(edir, f))])),
+  corteza: { color: b64(join(edir, 'corteza_color.jpg')), normal: b64(join(edir, 'corteza_normal.jpg')), rough: b64(join(edir, 'corteza_rough.jpg')) } };
 writeFileSync(join(root, 'dist/datos.js'),
   '/* Generado por tools/build.mjs: modelo GLB y propuesta de redistribución del apartamento 102 (rediseño conceptual). */\n' +
-  `window.APTO102=${JSON.stringify({ glb, geo, propuesta, muebles })};\n`);
+  `window.APTO102=${JSON.stringify({ glb, geo, propuesta, muebles, texturas, exterior })};\n`);
 
 const esbuild = process.env.ESBUILD || 'esbuild';
 execFileSync(esbuild, [join(root, 'src/app.mjs'), '--bundle', '--format=iife', '--target=es2020', '--minify',

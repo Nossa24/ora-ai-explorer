@@ -172,6 +172,8 @@ body:not(.is-loading) .loading { opacity: 0; visibility: hidden; }
 .presets button { padding: 8px 2px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .12); color: var(--ink); cursor: pointer; font: 500 13px/1 var(--serif); transition: border-color .2s, background .2s; }
 .presets button[aria-pressed="true"] { border-color: var(--gold-2); background: rgba(242, 224, 176, .1); color: var(--gold-2); }
 .presets button:hover { border-color: rgba(242, 224, 176, .5); }
+.presets.seg2 { grid-template-columns: repeat(2, 1fr); }
+#hora, #calidad { margin-bottom: 8px; }
 .preset-note { margin: 7px 0 10px; font-size: 9.5px; line-height: 1.45; color: var(--mute); min-height: 14px; }
 .fin-row { display: grid; grid-template-columns: 46px 1fr; align-items: center; gap: 6px; margin-bottom: 6px; }
 .fin-row > span { font-size: 8.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--mute); }

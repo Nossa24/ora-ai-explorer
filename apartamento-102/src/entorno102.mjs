@@ -1,153 +1,151 @@
-// Entorno exterior CONCEPTUAL del apartamento 102 (copia local del entorno del 104, que no se modifica):
-// setos orgánicos, pinos más suaves y bruma clara, como una vista fotográfica sobreexpuesta desde el interior.
-// Cielo físico, jardín con pinos, colinas y volúmenes lejanos.
-// No representa la vista real del proyecto ni el nivel real del terreno; el visor lo rotula así.
+// Entorno exterior CONCEPTUAL del apartamento 102. No representa la vista real del proyecto: el visor lo
+// rotula así. Reemplaza el paisaje de bloques del 104 (que no se modifica) por:
+//   - un cielo y un terreno fotográficos proyectados (HDRI «parque» de Poly Haven, CC0, vía pmndrs/assets),
+//     que también iluminan y se reflejan en los materiales;
+//   - árboles y arbustos tridimensionales generados con ez-tree (MIT, Daniel Greenheck), con corteza de
+//     ambientCG (CC0) y hojas con transparencia;
+//   - un receptor de sombras sobre el terreno, para que árboles y edificio asienten.
+// Todo se carga después de mostrar el apartamento (carga progresiva) y se escala según la calidad gráfica.
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { textura } from '../../apartamento-104/src/texturas.mjs';
+import { GroundedSkybox } from 'three/addons/objects/GroundedSkybox.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import { Tree, TreePreset } from './vendor/ez-tree/index.js';
 
 export const NIVEL_TERRENO = -3.2;   // supuesto conceptual: el apartamento se ve a un nivel sobre un jardín
 
 function mulberry(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const b64buf = b64 => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u.buffer; };
+function imgTex(b64, mime, srgb) {
+  const img = new Image(); const t = new THREE.Texture(img);
+  img.onload = () => { t.needsUpdate = true; }; img.src = `data:${mime};base64,${b64}`;
+  t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
 
-export function crearEntorno({ sunDir, W, H, balcon }) {
+export function crearEntorno({ sunDir, W, H, exterior = null, calidad = 'media', poke = () => {} }) {
   const g = new THREE.Group(); g.name = 'ENTORNO_conceptual';
-  const rnd = mulberry(104);
+  const rnd = mulberry(102);
   const Y = NIVEL_TERRENO;
 
-  // cielo físico (Preetham) alineado con el sol del visor
+  // cielo físico de respaldo (se ve solo mientras carga el HDRI o si no está disponible)
   const sky = new Sky(); sky.scale.setScalar(900);
   const u = sky.material.uniforms;
   u.turbidity.value = 5.5; u.rayleigh.value = 1.1; u.mieCoefficient.value = 0.004; u.mieDirectionalG.value = 0.82;
   u.sunPosition.value.copy(sunDir).multiplyScalar(400);
   g.add(sky);
+  const suelo = new THREE.Mesh(new THREE.CircleGeometry(300, 64).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: '#7b8a5c' }));
+  suelo.position.y = Y - 0.02; g.add(suelo);
 
-  // jardín
-  const grass = textura('pasto', { gen: 'pasto' });
-  const lawnMat = new THREE.MeshLambertMaterial({ map: grass.map });
-  for (const t of [lawnMat.map]) t.repeat.set(1 / 9, 1 / 9);
-  const lawnGeo = new THREE.CircleGeometry(320, 96); lawnGeo.rotateX(-Math.PI / 2);
-  const uv = lawnGeo.attributes.uv, pos = lawnGeo.attributes.position;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i), pos.getZ(i));   // UV en metros
-  const lawn = new THREE.Mesh(lawnGeo, lawnMat); lawn.position.y = Y; lawn.receiveShadow = true; g.add(lawn);
+  // receptor de sombras sobre el terreno (invisible salvo la sombra)
+  const sombra = new THREE.Mesh(new THREE.PlaneGeometry(90, 90).rotateX(-Math.PI / 2), new THREE.ShadowMaterial({ opacity: 0.32 }));
+  sombra.position.y = Y + 0.005; sombra.receiveShadow = true; g.add(sombra);
 
-  // zócalo bajo el apartamento (conceptual) y sendero de piedra
-  const conc = new THREE.MeshLambertMaterial({ color: '#cfcac1' });
+  // zócalo bajo el apartamento (conceptual) y franja de fachada
+  const conc = new THREE.MeshStandardMaterial({ color: '#d6d0c6', roughness: 0.9 });
   const zocalo = new THREE.Mesh(new THREE.BoxGeometry(W + 0.02, -0.13 - Y, H + 0.02), conc);
-  zocalo.position.set(0, (Y - 0.13) / 2, 0); zocalo.receiveShadow = true; g.add(zocalo);
-  const banda = new THREE.Mesh(new THREE.BoxGeometry(W + 0.06, 0.12, H + 0.06), new THREE.MeshLambertMaterial({ color: '#8e8a83' }));
+  zocalo.position.set(0, (Y - 0.13) / 2, 0); zocalo.receiveShadow = zocalo.castShadow = true; g.add(zocalo);
+  const banda = new THREE.Mesh(new THREE.BoxGeometry(W + 0.06, 0.12, H + 0.06), new THREE.MeshStandardMaterial({ color: '#9b958c', roughness: 0.8 }));
   banda.position.y = -0.19; g.add(banda);
-  const path = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 60), new THREE.MeshLambertMaterial({ color: '#c9c0b0' }));
-  path.rotation.x = -Math.PI / 2; path.position.set(-6.5, Y + 0.01, 24); path.receiveShadow = true; g.add(path);
 
   // galería de acceso conceptual frente a la puerta principal (el DWG del apartamento no la incluye)
   const gal = new THREE.Group(); gal.name = 'ENTORNO_galeria';
-  const gw = 16, gd = 1.6, gx = 0.2, gz = -H / 2 - gd / 2;   // al norte del apartamento (Z negativo)
-  const piso = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.14, gd), new THREE.MeshLambertMaterial({ color: '#cbc5bb' }));
-  piso.position.set(gx, -0.07, gz); piso.receiveShadow = true; gal.add(piso);
-  const losa = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.14, gd + 0.3), new THREE.MeshLambertMaterial({ color: '#f1efea' }));
-  losa.position.set(gx, 2.47, gz - 0.15); losa.castShadow = true; gal.add(losa);
-  const baranda = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.05, 0.05), new THREE.MeshLambertMaterial({ color: '#3a3a3c' }));
-  baranda.position.set(gx, 1.0, gz - gd / 2 + 0.03); gal.add(baranda);
-  for (let x = -7; x <= 8; x += 1.5) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.0, 0.03), baranda.material); p.position.set(x, 0.5, gz - gd / 2 + 0.03); gal.add(p); }
-  const muroMat = new THREE.MeshLambertMaterial({ color: '#e7e3dc' });
-  for (const [x0, x1] of [[gx - gw / 2, -W / 2], [W / 2, gx + gw / 2]]) {   // fachada de acceso de las unidades vecinas (fuera del apartamento)
+  const gw = 16, gd = 1.6, gx = 0.2, gz = -H / 2 - gd / 2;
+  const std = (c, r = 0.85) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
+  const piso = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.14, gd), std('#d3cdc3')); piso.position.set(gx, -0.07, gz); piso.receiveShadow = true; gal.add(piso);
+  const losa = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.14, gd + 0.3), std('#f1efea')); losa.position.set(gx, 2.47, gz - 0.15); losa.castShadow = true; gal.add(losa);
+  const baranda = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.04, 0.04), std('#2a2a2c', 0.5)); baranda.position.set(gx, 1.0, gz - gd / 2 + 0.03); gal.add(baranda);
+  for (let x = -7; x <= 8; x += 1.5) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.025, 1.0, 0.025), baranda.material); p.position.set(x, 0.5, gz - gd / 2 + 0.03); gal.add(p); }
+  const muroMat = std('#ebe6de');
+  for (const [x0, x1] of [[gx - gw / 2, -W / 2], [W / 2, gx + gw / 2]]) {
     const mw = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 2.4, 0.15), muroMat); mw.position.set((x0 + x1) / 2, 1.2, -H / 2 + 0.075); gal.add(mw);
   }
   const luzGal = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.12), new THREE.MeshBasicMaterial({ color: '#fff1d8' }));
   luzGal.position.set(-W / 2 + 0.65, 2.39, gz); gal.add(luzGal);
   g.add(gal);
 
-  // setos bajos y arbustos cerca de la fachada
-  // setos: masas orgánicas (icosaedros deformados y solapados) en lugar de cajas
-  const hedgeGeo = new THREE.IcosahedronGeometry(1, 3); const hp = hedgeGeo.attributes.position;
-  for (let i = 0; i < hp.count; i++) { const v = new THREE.Vector3().fromBufferAttribute(hp, i); const k = 0.86 + 0.18 * Math.abs(Math.sin(v.x * 7.3 + v.y * 5.1) * Math.cos(v.z * 6.7 - v.y * 2.3)); hp.setXYZ(i, v.x * k, v.y * k, v.z * k); }
-  hedgeGeo.computeVertexNormals();
-  const hedgeSpec = [[0, 7.2, 12, 0.9, 1.0], [-7.2, 0, 0.9, 10, 1.0], [7.4, 1, 0.9, 12, 1.0], [-2, 13, 6, 0.8, 0.8]];
-  const nH = hedgeSpec.reduce((a, [, , w, d]) => a + Math.ceil(Math.max(w, d) / 0.7), 0);
-  const hedges = new THREE.InstancedMesh(hedgeGeo, new THREE.MeshLambertMaterial({ color: '#ffffff' }), nH); let hi = 0;
-  const Mh = new THREE.Matrix4(), qh = new THREE.Quaternion(), sh = new THREE.Vector3(), ph = new THREE.Vector3(), ch = new THREE.Color();
-  for (const [x, z, w, d, h] of hedgeSpec) {
-    const n = Math.ceil(Math.max(w, d) / 0.7);
-    for (let k = 0; k < n; k++) {
-      const f = (k + 0.5) / n - 0.5, sx = w > d ? 0.62 : w / 2 + 0.05, sz = w > d ? d / 2 + 0.05 : 0.62;
-      ph.set(x + (w > d ? f * w : 0), Y + h * (0.45 + rnd() * 0.08), z + (w > d ? 0 : f * d));
-      qh.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 6); sh.set(sx * (0.9 + rnd() * 0.3), h * (0.52 + rnd() * 0.1), sz * (0.9 + rnd() * 0.3));
-      Mh.compose(ph, qh, sh); hedges.setMatrixAt(hi, Mh); hedges.setColorAt(hi++, ch.setHSL(0.24 + rnd() * 0.04, 0.34, 0.26 + rnd() * 0.06));
-    }
-  }
-  hedges.castShadow = hedges.receiveShadow = true; g.add(hedges);
-  // arbustos orgánicos (icosaedro deformado, sombreado suave)
-  const bushGeo = new THREE.IcosahedronGeometry(1, 4); const bp = bushGeo.attributes.position;
-  for (let i = 0; i < bp.count; i++) { const v = new THREE.Vector3().fromBufferAttribute(bp, i); const k = 0.82 + 0.3 * Math.abs(Math.sin(v.x * 5.1 + v.y * 3.7) * Math.cos(v.z * 4.3)); bp.setXYZ(i, v.x * k, v.y * k, v.z * k); }
-  bushGeo.computeVertexNormals();
-  const NB = 34;
-  const bushes = new THREE.InstancedMesh(bushGeo, new THREE.MeshLambertMaterial({ color: '#ffffff' }), NB);
-  const M = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
-  for (let i = 0; i < NB; i++) {
-    const a = rnd() * Math.PI * 2, r = 6.5 + rnd() * 10;
-    p.set(Math.cos(a) * r, Y + 0.25, Math.sin(a) * r + 2); if (Math.abs(p.x) < 5.5 && p.z > -5 && p.z < 6.5) p.z += 8;
-    const k = 0.45 + rnd() * 0.75; s.set(k * 1.3, k * 0.85, k * 1.1);
-    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 6); M.compose(p, q, s); bushes.setMatrixAt(i, M);
-    bushes.setColorAt(i, c.setHSL(0.22 + rnd() * 0.08, 0.38, 0.27 + rnd() * 0.1));
-  }
-  bushes.castShadow = true; bushes.receiveShadow = true; g.add(bushes);
+  const fog = new THREE.Fog('#dfe4e2', 45, 320);
+  const estado = { hdr: null, skybox: null, rot: 0, arboles: 0, listo: false };
 
-  // pinos: tronco + cinco verticilos cónicos con sombreado suave; un anillo cercano y una franja lejana
-  function pinos(N, rMin, rMax, hMin, hMax, tiersN, seg) {
-    const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.1, 0.22, 1, 8), new THREE.MeshLambertMaterial({ color: '#4f3b2d' }), N);
-    const cg = new THREE.ConeGeometry(1, 1, seg, 1, true); const cp = cg.attributes.position;
-    for (let i = 0; i < cp.count; i++) { const y = cp.getY(i); if (y < 0) { const ang = Math.atan2(cp.getZ(i), cp.getX(i)); const k = 1 + 0.10 * Math.sin(ang * 9) + 0.06 * Math.sin(ang * 23 + y * 3); cp.setX(i, cp.getX(i) * k); cp.setZ(i, cp.getZ(i) * k); cp.setY(i, y - 0.08 * Math.abs(Math.sin(ang * 3.5))); } }
-    cg.computeVertexNormals();
-    const crownMat = new THREE.MeshLambertMaterial({ color: '#ffffff', side: THREE.DoubleSide });
-    const tiers = Array.from({ length: tiersN }, () => new THREE.InstancedMesh(cg, crownMat, N));
-    let n = 0;
-    while (n < N) {
-      const a = rnd() * Math.PI * 2, r = rMin + Math.pow(rnd(), 0.8) * (rMax - rMin);
-      const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      if (z > 4 && Math.abs(x - 1) < 6 + z * 0.15 && z < 34) continue;   // deja abierta la vista frontal del balcón
+  // ---------------------------------------------------------------- HDRI proyectado
+  function cargarHDR() {
+    if (!exterior?.hdr) return;
+    const td = new HDRLoader().setDataType(THREE.HalfFloatType).parse(b64buf(exterior.hdr));
+    const tex = new THREE.DataTexture(td.data, td.width, td.height, THREE.RGBAFormat, td.type);
+    tex.colorSpace = THREE.LinearSRGBColorSpace; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+    tex.flipY = true; tex.mapping = THREE.EquirectangularReflectionMapping; tex.needsUpdate = true;
+    // gira el HDRI para que su sol coincida con el sol del visor (sombras y reflejos coherentes)
+    const [su, sv] = exterior.sol_uv;                    // posición del sol en la imagen (0..1, v desde arriba)
+    const az = (su - 0.5) * 2 * Math.PI;                 // convención equirectangular de three.js
+    const azS = Math.atan2(sunDir.z, sunDir.x);
+    estado.rot = az - azS;
+    const sb = new GroundedSkybox(tex, exterior.altura_camara || 4, 160, 96);
+    sb.position.y = Y + (exterior.altura_camara || 4); sb.rotation.y = estado.rot;
+    sb.material.fog = false; sb.material.toneMapped = true;
+    g.add(sb); sky.visible = false; suelo.visible = false;
+    estado.hdr = tex; estado.skybox = sb;
+  }
+
+  // ---------------------------------------------------------------- árboles y arbustos (ez-tree)
+  function cargarArboles() {
+    if (!exterior?.hojas) return;
+    const corteza = { color: imgTex(exterior.corteza.color, 'image/jpeg', true), normal: imgTex(exterior.corteza.normal, 'image/jpeg', false), roughness: imgTex(exterior.corteza.rough, 'image/jpeg', false), ao: null };
+    const hojas = Object.fromEntries(Object.entries(exterior.hojas).map(([k, b]) => [k, imgTex(b, 'image/png', true)]));
+    const plantilla = (preset, hoja, seed, alto, tinte) => {
+      const t = new Tree(); t.options.copy(JSON.parse(JSON.stringify(TreePreset[preset])));
+      t.options.seed = seed; t.options.bark.maps = corteza; t.options.bark.textured = true;
+      t.options.leaves.map = hojas[hoja] || Object.values(hojas)[0]; t.options.leaves.tint = tinte;
+      t.options.leaves.count = Math.round(t.options.leaves.count * 1.6); t.options.leaves.size *= 1.15;   // copas más llenas
+      t.generate();
+      const w = new THREE.Group();                       // envoltura simple: se clona compartiendo geometría y materiales
+      t.traverse(o => { if (o.isMesh && o.geometry?.attributes?.position?.count) { const c = o.clone(); c.castShadow = c.receiveShadow = true; w.add(c); } });
+      const bb = new THREE.Box3().setFromObject(w); const s = alto / Math.max(0.01, bb.max.y - bb.min.y);
+      w.scale.setScalar(s);
+      return w;
+    };
+    const N = calidad === 'alta' ? { arb: 13, arbu: 12 } : calidad === 'baja' ? { arb: 5, arbu: 5 } : { arb: 9, arbu: 8 };
+    const tipos = [plantilla('Oak Medium', 'oak', 11, 9.5, 0xb9cf9a), plantilla('Ash Medium', 'ash', 23, 11, 0xb4c994), plantilla('Oak Large', 'oak', 41, 12.5, 0xaec58e)];
+    const arbustos = [plantilla('Bush 1', 'ash', 5, 1.4, 0xa9c08a), plantilla('Bush 2', 'oak', 8, 1.2, 0xb2c693)];
+    const pos = [];
+    const libre = (x, z, r) => pos.every(([a, b, c]) => Math.hypot(x - a, z - b) > r + c);
+    let n = 0, guard = 0;
+    while (n < N.arb && guard++ < 500) {          // arboleda: marco lateral y fondo, con la vista del balcón despejada
+      const a = rnd() * Math.PI * 2, r = 11 + Math.pow(rnd(), 0.7) * 26;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r + 2;
+      if (z > 3 && Math.abs(x + 2.5) < 4.5 + (z - 3) * 0.12) continue;     // cono de vista del balcón
       if (Math.abs(x) < 8 && Math.abs(z) < 8) continue;
-      const h = hMin + rnd() * (hMax - hMin), w = h * (0.2 + rnd() * 0.06), rot = rnd() * 6;
-      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot);
-      M.compose(p.set(x, Y + h * 0.3, z), q, s.set(1 + h * 0.02, h * 0.6, 1 + h * 0.02)); trunk.setMatrixAt(n, M);
-      const hue = 0.28 + rnd() * 0.05, sat = 0.28 + rnd() * 0.12, lum = 0.19 + rnd() * 0.07;
-      tiers.forEach((t, k) => {
-        const f = k / (tiersN - 1), ww = w * (1 - f * 0.75), hh = h * (0.34 - f * 0.12), yy = Y + h * (0.3 + f * 0.62) + hh / 2;
-        M.compose(p.set(x, yy, z), q, s.set(ww, hh, ww)); t.setMatrixAt(n, M); t.setColorAt(n, c.setHSL(hue, sat, lum + f * 0.05));
-      });
-      n++;
+      if (!libre(x, z, 4)) continue;
+      const t = tipos[n % tipos.length].clone(); const k = 0.8 + rnd() * 0.45;
+      t.scale.multiplyScalar(k); t.rotation.y = rnd() * 6.28; t.position.set(x, Y, z); g.add(t); pos.push([x, z, 4]); n++;
     }
-    trunk.castShadow = true; g.add(trunk); tiers.forEach(t => { t.castShadow = rMin < 30; g.add(t); });
-  }
-  pinos(70, 9, 70, 10, 19, 7, 28);
-  pinos(260, 80, 230, 12, 24, 3, 8);
-  // un par de árboles de hoja ancha junto al jardín
-  const leafGeo = new THREE.IcosahedronGeometry(1, 2); leafGeo.computeVertexNormals();
-  const leafMat = new THREE.MeshLambertMaterial({ color: '#58733f' });
-  for (const [x, z, h] of [[-9.5, 9, 7], [11, 6.5, 8], [-12, -4, 6.5]]) {
-    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.24, h * 0.55, 8), new THREE.MeshLambertMaterial({ color: '#5b4637' }));
-    tr.position.set(x, Y + h * 0.275, z); tr.castShadow = true; g.add(tr);
-    for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(leafGeo, leafMat); const sc = h * (0.18 + rnd() * 0.1); m.scale.set(sc, sc * 0.8, sc); m.position.set(x + (rnd() - .5) * h * 0.35, Y + h * (0.62 + rnd() * 0.25), z + (rnd() - .5) * h * 0.35); m.castShadow = true; g.add(m); }
+    for (let i = 0, gi = 0; i < N.arbu && gi < 400; gi++) {               // arbustos junto al zócalo y en el jardín
+      const lado = i % 3; let x, z;
+      if (lado === 0) { x = -W / 2 - 1.2 - rnd() * 2.5; z = -H / 2 + rnd() * (H + 6); }
+      else if (lado === 1) { x = W / 2 + 1.2 + rnd() * 2.5; z = -H / 2 + rnd() * (H + 6); }
+      else { x = -W / 2 + rnd() * (W + 8) - 4; z = H / 2 + 4 + rnd() * 5; }
+      if (!libre(x, z, 1.0)) continue;
+      const b = arbustos[i % arbustos.length].clone(); b.scale.multiplyScalar(0.8 + rnd() * 0.6); b.rotation.y = rnd() * 6.28; b.position.set(x, Y, z); g.add(b); pos.push([x, z, 1]); i++;
+    }
+    estado.arboles = n;
   }
 
-  // colinas lejanas con perspectiva aérea
-  const segs = 160, ring = new THREE.BufferGeometry(); const P = [], C = [], I = [];
-  const near = new THREE.Color('#6f8466'), far = new THREE.Color('#a9b7b4');
-  for (let i = 0; i <= segs; i++) {
-    const a = i / segs * Math.PI * 2;
-    const hgt = 14 + 16 * (0.5 + 0.5 * Math.sin(a * 3 + 1.3)) * (0.6 + 0.4 * Math.sin(a * 7.1)) + 6 * Math.sin(a * 13.7);
-    for (const [r, y, col] of [[330, Y - 2, near], [300, Y + hgt, far]]) { P.push(Math.cos(a) * r, y, Math.sin(a) * r); C.push(col.r, col.g, col.b); }
-  }
-  for (let i = 0; i < segs; i++) { const k = i * 2; I.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
-  ring.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); ring.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); ring.setIndex(I); ring.computeVertexNormals();
-  g.add(new THREE.Mesh(ring, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, fog: false })));
-
-  // volúmenes lejanos genéricos (no son edificios reales del proyecto)
-  const vol = new THREE.MeshLambertMaterial({ color: '#d4d6d3' });
-  for (const [x, z, w, d, h] of [[-120, 150, 18, 18, 38], [-95, 170, 14, 14, 28], [140, 120, 20, 16, 44], [165, 95, 12, 12, 30], [60, -180, 22, 18, 36], [-150, -120, 16, 16, 26]]) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), vol); m.position.set(x, Y + h / 2, z); g.add(m);
+  // ---------------------------------------------------------------- hora del día
+  function setHora(h) {
+    const sb = estado.skybox;
+    if (sb) sb.material.color.set(h === 'atardecer' ? '#d3a07c' : '#ffffff');
+    fog.color.set(h === 'atardecer' ? '#d9b49a' : '#dfe4e2');
+    u.turbidity.value = h === 'atardecer' ? 9 : 5.5;
   }
 
-  const fog = new THREE.Fog('#e4e9ec', 22, 210);   // bruma clara: el exterior se lee como fondo luminoso
-  return { group: g, fog, sky };
+  // carga progresiva: primero el HDRI y luego los árboles, cada uno en su propio cuadro
+  function cargar(paso = 0) {
+    try {
+      if (paso === 0) cargarHDR();
+      if (paso === 1) cargarArboles();
+    } catch (e) { console.warn('entorno', e); }
+    poke(6);
+    if (paso < 1) setTimeout(() => cargar(paso + 1), 60); else estado.listo = true;
+  }
+
+  return { group: g, fog, sky, estado, cargar, setHora };
 }

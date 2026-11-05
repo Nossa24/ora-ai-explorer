@@ -13,8 +13,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { setTextureSize, anisotropy, cacheSize } from '../../apartamento-104/src/texturas.mjs';
-import { RECETAS, OPCIONES, PRESETS, FIJOS, aplicar, opcion, ambiente as ambienteBase } from '../../apartamento-104/src/acabados.mjs';
+import { RECETAS, OPCIONES, PRESETS, FIJOS, opcion, ambiente as ambienteBase } from '../../apartamento-104/src/acabados.mjs';
 import { crearEntorno, NIVEL_TERRENO } from './entorno102.mjs';
+import { initPBR, aplicar102, texturaPBR, OPC_PREMIUM, AMB_PREMIUM, PRESET_PREMIUM } from './pbr102.mjs';
 
 // ------------------------------------------------------------------ propuesta monocromática (solo en el 102)
 // Paleta en blanco, grises y negro mate, pedida para la propuesta con barra. Ilustrativa, no contractual.
@@ -41,7 +42,10 @@ const AMB_MONO = {
   puerta_entrada: { t: 'negro_mate' }, laton: { c: '#1d1d1f', r: 0.45, mt: 0.8 }, textil_tapete: { t: 'tapete_mono' }, cuadro: { t: 'cuadro_mono' },
   maceta: { c: '#2a2a2c', r: 0.6 }, ceramica_deco: { c: '#efeeeb', r: 0.35 },
 };
-const ambiente = id => (id === 'monocromatica' ? AMB_MONO : ambienteBase(id));
+for (const t of ['piso', 'muros', 'cocina', 'bano']) OPCIONES[t].unshift(OPC_PREMIUM[t]);
+PRESETS.unshift(PRESET_PREMIUM);
+const ambiente = id => (id === 'monocromatica' ? AMB_MONO : id === 'calida_premium' ? AMB_PREMIUM : ambienteBase(id));
+const aplicar = aplicar102;   // entiende tanto las recetas del 104 como las texturas propias del 102
 
 const DATA = window.APTO102;
 const geo = DATA.geo;
@@ -67,7 +71,7 @@ const poke = (n = 40) => { dirty = Math.max(dirty, n); };
 
 // ------------------------------------------------------------------ calidad
 // alta: oclusión ambiental (GTAO) + MSAA, sombras 2048. media: render directo, sombras 1024 (teléfonos y tabletas).
-let quality = ['alta', 'media'].includes(params.get('calidad')) ? params.get('calidad') : (coarse || innerWidth < 900 ? 'media' : 'alta');
+let quality = ['alta', 'media', 'baja'].includes(params.get('calidad')) ? params.get('calidad') : (coarse || innerWidth < 900 ? 'media' : 'alta');
 const qualityPinned = params.has('calidad');
 setTextureSize(quality === 'alta' && !compact.matches ? 1024 : 512);
 
@@ -79,7 +83,7 @@ try {
 } catch (error) {
   $('#error').hidden = false; document.body.classList.remove('is-loading'); throw error;
 }
-const pixelRatio = () => Math.min(devicePixelRatio, quality === 'alta' ? 2 : (innerWidth < 700 ? 1.5 : 1.6));
+const pixelRatio = () => Math.min(devicePixelRatio, quality === 'alta' ? 2 : quality === 'baja' ? 1 : (innerWidth < 700 ? 1.5 : 1.6));
 renderer.setPixelRatio(pixelRatio());
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NeutralToneMapping;   // Khronos PBR Neutral: colores de material fieles, como una foto de arquitectura
@@ -108,7 +112,8 @@ const SUN_DIR = new THREE.Vector3(-6, 8.5, 8).normalize();
 const hemi = new THREE.HemisphereLight('#f6efe2', '#2a2621', 0.85); scene.add(hemi);
 const sun = new THREE.DirectionalLight('#fff0d8', 2.6);
 sun.position.copy(SUN_DIR).multiplyScalar(14); sun.castShadow = true;
-sun.shadow.mapSize.set(quality === 'alta' ? 2048 : 1024, quality === 'alta' ? 2048 : 1024);
+const shadowRes = () => (quality === 'alta' ? 2048 : quality === 'baja' ? 512 : 1024);
+sun.shadow.mapSize.set(shadowRes(), shadowRes());
 Object.assign(sun.shadow.camera, { left: -6.6, right: 6.6, top: 6.6, bottom: -6.6, near: 2, far: 32 });
 sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.025; sun.shadow.radius = 3;
 scene.add(sun); scene.add(sun.target);
@@ -129,6 +134,7 @@ const SRC_R = geo.ventanas.map(w => {
   const look = sur ? toScene((w.x0 + w.x1) / 2, w.y1 + 2, 1.2) : toScene(w.x0 - 2, (w.y0 + w.y1) / 2, 1.2);
   return { sala, width, pos, look, k: sala ? 5 : 4 };
 });
+const luz = { interior: 1, ventana: 1 };   // multiplicadores de la hora del día
 const interiorLights = new THREE.Group(); scene.add(interiorLights);
 const windowLights = new THREE.Group(); scene.add(windowLights);
 const poolP = Array.from({ length: 4 }, () => { const l = new THREE.PointLight('#ffcf9a', 0, 5.2, 1.8); l.userData = { src: null, k: 0 }; interiorLights.add(l); return l; });
@@ -138,7 +144,7 @@ function assignPool(pool, sources, ref, apply) {
   const keep = new Set(pool.map(l => l.userData.src).filter(s => best.includes(s)));
   const spare = pool.filter(l => !keep.has(l.userData.src));
   for (const s of best) if (!keep.has(s)) { const l = spare.shift(); l.userData.src = s; l.intensity = 0; apply(l, s); }
-  for (const l of pool) { if (l.userData.src) apply(l, l.userData.src); l.userData.k = l.userData.src ? l.userData.src.k : 0; }
+  for (const l of pool) { if (l.userData.src) apply(l, l.userData.src); l.userData.k = l.userData.src ? l.userData.src.k * (l.isRectAreaLight ? luz.ventana : luz.interior) : 0; }
 }
 function updateLightPool(dt, force) {
   if (force || frame % 8 === 0) {
@@ -156,7 +162,8 @@ const ground = new THREE.Mesh(new THREE.CircleGeometry(26, 64), new THREE.MeshSt
 ground.rotation.x = -Math.PI / 2; ground.position.y = -0.125; ground.receiveShadow = true; scene.add(ground);
 
 // entorno exterior conceptual (no es la vista real del proyecto)
-const entorno = crearEntorno({ sunDir: SUN_DIR, W, H, balcon: PROP });
+const entorno = crearEntorno({ sunDir: SUN_DIR, W, H, exterior: DATA.exterior, calidad: quality, poke: n => poke(n) });
+let envHDR = null;
 entorno.group.visible = false; scene.add(entorno.group);
 
 // ------------------------------------------------------------------ posproceso (calidad alta)
@@ -177,6 +184,7 @@ function setupComposer() {
   gtao._overrideVisibility = function () {
     base(); const cache = this._visibilityCache;
     this.scene.traverse(o => { if (o.visible && ((o.isMesh && o.material?.transparent) || o.isReflector || o.isSky || o === entorno.sky)) { o.visible = false; cache.push(o); } });
+    if (entorno.group.visible) { entorno.group.visible = false; cache.push(entorno.group); }   // el exterior (cielo HDRI y hojas con transparencia) no recibe oclusión
   };
   composer.addPass(gtao);
   composer.addPass(new OutputPass());
@@ -186,7 +194,10 @@ function setQuality(q) {
   quality = q;
   if (q !== 'alta' && composer) { composer.dispose?.(); composer = null; gtao = null; }
   renderer.setPixelRatio(pixelRatio()); setupComposer(); resize();
+  sun.shadow.mapSize.set(shadowRes(), shadowRes()); sun.shadow.map?.dispose(); sun.shadow.map = null; renderer.shadowMap.needsUpdate = true;
   $$('#layerQuality').forEach(i => { i.checked = q === 'alta'; });
+  $$('#calidad button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.q === q)));
+  poke(20);
 }
 
 // ------------------------------------------------------------------ modelo
@@ -208,25 +219,31 @@ function base64ToBuffer(b64) {
 // apartamento solo trae su posición (nodos con userData.modelo); se cargan antes y se clonan.
 const MUEBLES = {};
 const TINTE = {   // tela del sofá, tela de las butacas y madera de las patas, por propuesta de acabados
+  calida_premium: { sofa: '#eee6d9', butaca: '#cdbfab', madera: '#b48f68' },
   monocromatica: { sofa: '#c9c8c5', butaca: '#3b3b3e', madera: '#1f1f21' },
   calida: { sofa: '#d3c7b5', butaca: '#a8603e', madera: '#6b4f38' },
   sofisticada: { sofa: '#6a6b6f', butaca: '#8e5b36', madera: '#2f2620' },
   luminosa: { sofa: '#ece8e0', butaca: '#aab69f', madera: '#cdb999' },
 };
 const mueblesMats = [];
+const puertasOcultas = [];   // puerta corrediza oculta de ropas: se abre al acercarse
+const PUERTA_ROPAS = (() => { const d = geo.puertas.find(p => p.id === 'ropas'); return d ? { x: (d.rect[0] + d.rect[2]) / 2, y: (d.rect[1] + d.rect[3]) / 2 } : null; })();
 function tintMuebles(id) {
   const t = TINTE[id] || TINTE.monocromatica;
   for (const m of mueblesMats) {
     const c = /tela_sofa/.test(m.name) ? t.sofa : /tela_butaca/.test(m.name) ? t.butaca : /madera/.test(m.name) ? t.madera : null;
     if (!c) continue;
     m.color.set(c); if (m.sheenColor) m.sheenColor.set(c).lerp(new THREE.Color('#ffffff'), 0.35);
+    if (/tela_sofa/.test(m.name) && id === 'calida_premium') {   // bouclé crema, como en la referencia de la sala
+      const nb = texturaPBR('boucle', 'normal'); if (nb && m.normalMap !== nb) { m.userData.n0 = m.userData.n0 || m.normalMap; m.normalMap = nb.clone(); m.normalMap.repeat.set(9, 9); m.normalMap.needsUpdate = true; m.normalScale.set(1.2, 1.2); m.sheenRoughness = 0.9; m.needsUpdate = true; }
+    } else if (m.userData.n0 && /tela_sofa/.test(m.name)) { m.normalMap = m.userData.n0; m.needsUpdate = true; }
   }
 }
 const loadMuebles = Promise.all(Object.entries(DATA.muebles || {}).map(([k, b64]) => new GLTFLoader().parseAsync(base64ToBuffer(b64), '').then(g => { MUEBLES[k] = g.scene; })));
 
 loadMuebles.catch(e => console.warn('muebles', e)).then(() => new GLTFLoader().parse(base64ToBuffer(DATA.glb), '', gltf => {
   model = gltf.scene; scene.add(model);
-  const conModelo = []; model.traverse(o => { if (o.userData?.modelo && MUEBLES[o.userData.modelo]) conModelo.push(o); });
+  const conModelo = []; model.traverse(o => { if (o.userData?.modelo && MUEBLES[o.userData.modelo]) conModelo.push(o); if (o.userData?.corrediza) puertasOcultas.push({ node: o, rec: o.userData.corrediza.recorrido, t: 0 }); });
   for (const o of conModelo) {
     const c = MUEBLES[o.userData.modelo].clone(true); c.scale.setScalar(o.userData.escala || 1); o.add(c);
     c.traverse(q => { if (q.isMesh) { q.castShadow = q.receiveShadow = true; q.userData.mueble = true; if (!mueblesMats.includes(q.material)) mueblesMats.push(q.material); } });
@@ -247,6 +264,8 @@ loadMuebles.catch(e => console.warn('muebles', e)).then(() => new GLTFLoader().p
       if (transparent) { m.depthWrite = false; o.renderOrder = 2; }
       if (/^vidrio/.test(m.name)) Object.assign(m, { roughness: 0.03, metalness: 0, envMapIntensity: 1.6 });
       if (m.name === 'luz_calida') { m.emissive.set('#ffd9a8'); m.emissiveIntensity = 2.2; m.toneMapped = true; }
+      if (m.name === 'vidrio_opal') { m.emissive.set('#ffe2bd'); m.emissiveIntensity = 0.9; }
+      if (m.name === 'tela_visillo') { m.opacity = 0.5; m.depthWrite = false; }
       if (m.name === 'pantalla_lampara') m.emissiveIntensity = 0.8;
       if (!o.userData.mueble) mats[m.name] = m;
     }
@@ -254,17 +273,19 @@ loadMuebles.catch(e => console.warn('muebles', e)).then(() => new GLTFLoader().p
   physicalize();
   buildMirrors(); updateMirrors();
   aplicar(mats, FIJOS);
-  setPreset('monocromatica');
+  initPBR(DATA.texturas, { anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()), poke });
+  setPreset('calida_premium');
   groups.cielo.forEach(o => { o.visible = false; });
   anisotropy(renderer);
   buildHotspots(); buildPois(); buildDims(); buildTour(); applyLayers(); resetOrbit(true);
   setupComposer(); resize();
   document.body.classList.remove('is-loading');
   ready = true;
+  setTimeout(() => entorno.cargar(), 250);   // carga progresiva: HDRI y vegetación después del primer cuadro
 }, error => { console.error(error); $('#error').hidden = false; document.body.classList.remove('is-loading'); }));
 
 // materiales físicos: telas con brillo de terciopelo (sheen) y piedras pulidas con capa transparente (clearcoat)
-const SHEEN = /^(tela_|textil_tapete|toalla)/, CLEAR = /^(meson|meson_bano|salpicadero|alfeizar|vidrio_negro|electro_blanco|ceramica_blanca)$/;
+const SHEEN = /^(tela_|textil_tapete|toalla)/, CLEAR = /^(meson|meson_bano|vidrio_negro|electro_blanco|ceramica_blanca|ceramica_calida)$/;
 function physicalize() {
   const swap = {};
   for (const [name, m] of Object.entries(mats)) {
@@ -272,7 +293,7 @@ function physicalize() {
     const p = new THREE.MeshPhysicalMaterial();
     THREE.MeshStandardMaterial.prototype.copy.call(p, m); p.name = name; p.userData = { ...m.userData };
     if (SHEEN.test(name)) Object.assign(p, { sheen: 1, sheenRoughness: 0.75, roughness: Math.max(0.85, m.roughness) }), p.sheenColor.set('#8a8a8a');
-    else Object.assign(p, { clearcoat: name === 'ceramica_blanca' ? 0.6 : 0.35, clearcoatRoughness: 0.08 });
+    else Object.assign(p, { clearcoat: /ceramica/.test(name) ? 0.5 : /vidrio|electro/.test(name) ? 0.6 : 0.12, clearcoatRoughness: /meson/.test(name) ? 0.35 : 0.1 });   // travertino apomazado: brillo apenas perceptible
     swap[name] = p; mats[name] = p;
   }
   model.traverse(o => { if (o.isMesh && !o.userData.mueble && swap[o.material.name]) o.material = swap[o.material.name]; });
@@ -394,7 +415,7 @@ const POIS = [
   { id: 'ductos', p: [3.83, 5.25, 2.05], cat: 'verificado', t: 'Ductos del DWG', d: 'Los dos ductos verticales del plano se conservan. Los dos baños y la zona de ropas se agrupan junto a ellos.' },
   { id: 'hall', p: [4.0, 4.24, 2.15], cat: 'propuesta', t: 'Hall de alcobas · 2,12 m²', d: 'Un solo hall reparte las dos habitaciones, el baño social y la zona de ropas: menos pasillo y más área útil en los recintos.' },
   { id: 'ingreso', p: [1.0, 6.65, 1.9], cat: 'propuesta', t: 'Ingreso libre de 0,95 m', d: 'Entre la despensa de 0,40 m y el mesón de la cocina quedan 0,95 m frente a frente (1,00 m medido; lo limita la puerta de acceso).' },
-  { id: 'habitacion_2', p: [4.0, 1.9, 1.2], cat: 'propuesta', t: 'Habitación 2 · 8,88 m²', d: 'Cama doble, armario de 1,40 m y escritorio bajo la ventana. La alcoba equivalente del plano original medía 2,50 × 2,52 m (6,30 m²).' },
+  { id: 'habitacion_2', p: [4.0, 1.9, 1.2], cat: 'propuesta', t: 'Habitación 2 · 8,88 m²', d: 'Cama doble con cabecero tapizado, mesas de noche flotantes, armario corredizo de 1,40 m y cómoda baja bajo la ventana. La alcoba equivalente del plano original medía 2,50 × 2,52 m (6,30 m²).' },
   { id: 'principal', p: [6.6, 2.5, 1.3], cat: 'propuesta', t: 'Habitación principal · 11,39 m²', d: 'Suite con baño privado de 4,70 m² y vestier de 3,06 m², en el área que ocupaban el estudio y la alcoba del plano original.' },
   { id: 'bano_principal', p: [5.75, 6.9, 1.5], cat: 'propuesta', t: 'Baño principal · 4,70 m²', d: 'Propuesta: ducha de 1,78 m con mampara, doble lavamanos y sanitario suspendido.' },
   { id: 'altura', p: [3.0, 4.24, 2.25], cat: 'provisional', t: 'Altura libre 2,40 m (supuesta)', d: 'El DWG no incluye cortes: altura piso–cielo, losa, puertas de 2,10 m y antepechos de 0,90 m son provisionales.' },
@@ -830,9 +851,7 @@ function setMode(next, opts = {}) {
   interiorLights.visible = windowLights.visible = inside; ground.visible = !inside;
   canvas.style.cursor = next === 'walk' ? 'crosshair' : '';
   fovTarget = next === 'orbit' ? 42 : (camera.aspect < 0.9 ? 74 : 60);
-  hemi.intensity = next === 'orbit' ? 0.85 : 0.32;
-  scene.environmentIntensity = next === 'orbit' ? 0.45 : 0.28;
-  renderer.toneMappingExposure = next === 'orbit' ? 0.92 : 0.86;
+  luzAmbiente();
   // dentro del apartamento la arquitectura manda: la ficha de opciones se pliega
   if (next !== 'orbit' && !compact.matches) { body.hidden = true; toggle.setAttribute('aria-expanded', 'false'); }
   if (next === 'orbit' && !compact.matches) { body.hidden = false; }
@@ -852,6 +871,37 @@ function setMode(next, opts = {}) {
   applyLayers();
 }
 $$('#modes button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+// ------------------------------------------------------------------ luz ambiente y hora del día (día / atardecer)
+let hora = 'dia';
+const SUN_DIA = SUN_DIR.clone();
+const SUN_TARDE = new THREE.Vector3(-8.5, 2.3, 6.8).normalize();   // sol bajo del oeste–suroeste, entra por la fachada
+function luzAmbiente() {
+  const inside = mode !== 'orbit', t = hora === 'atardecer';
+  hemi.intensity = inside ? (t ? 0.2 : 0.3) : (t ? 0.55 : 0.85);
+  hemi.groundColor.set(inside ? (t ? '#8a6f58' : '#b4a796') : (t ? '#3a2a20' : '#2a2621'));   // dentro: rebote cálido del piso hacia el cielo raso
+  // dentro, la luz ambiente es la de una habitación neutra (el HDRI exterior teñiría de verde los cielos rasos);
+  // en la maqueta, el HDRI ilumina y se refleja en los materiales
+  scene.environment = inside ? roomEnv : (envHDR || roomEnv);
+  scene.environmentIntensity = (inside ? 0.30 : 0.45) * (t ? 0.55 : 1);
+  renderer.toneMappingExposure = inside ? (t ? 0.98 : 0.88) : (t ? 0.85 : 0.92);
+}
+function setHora(h) {
+  hora = h === 'atardecer' ? 'atardecer' : 'dia';
+  const t = hora === 'atardecer';
+  SUN_DIR.copy(t ? SUN_TARDE : SUN_DIA);
+  sun.color.set(t ? '#ffaa66' : '#fff0d8'); sun.intensity = t ? 2.4 : 2.6;
+  hemi.color.set(t ? '#f0c6a0' : '#f6efe2');
+  luz.interior = t ? 1.8 : 1; luz.ventana = t ? 0.45 : 1;
+  for (const l of poolR) l.color.set(t ? '#ffcf9e' : '#e9eff5');
+  if (mats.luz_calida) mats.luz_calida.emissiveIntensity = t ? 3.2 : 2.2;
+  entorno.setHora(hora); entorno.sky.material.uniforms.sunPosition.value.copy(SUN_DIR).multiplyScalar(400);
+  luzAmbiente(); updateLightPool(0, true); renderer.shadowMap.needsUpdate = true;
+  $$('#hora button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.h === hora)));
+  poke(40);
+}
+$$('#hora button').forEach(b => b.addEventListener('click', () => setHora(b.dataset.h)));
+$$('#calidad button').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.q === quality)); b.addEventListener('click', () => setQuality(b.dataset.q)); });
 
 function updateEnvironment() {
   const inside = mode !== 'orbit';
@@ -990,7 +1040,16 @@ function tick(now) {
   if (poiOpen) { const p = pois.find(q => q.id === poiOpen.id); if (p.el.classList.contains('off') && mode === 'walk' && camP.distanceTo(p.pos) > 5) closePoi(); }
   for (const d of dimLabels) { d.el.hidden = !dimGroup.visible; if (dimGroup.visible) project(d.pos, d.el); }
 
+  for (const d of puertasOcultas) {   // abrir/cerrar con suavidad según la cercanía del visitante
+    const pc = toPlan(camera.position);
+    const abrir = mode === 'orbit' || (PUERTA_ROPAS && Math.hypot(pc.x - PUERTA_ROPAS.x, pc.y - PUERTA_ROPAS.y) < 1.4) ? 1 : 0;
+    if (Math.abs(abrir - d.t) > 0.002) { d.t += (abrir - d.t) * Math.min(1, dt * 3); d.node.position.x = d.rec * d.t; poke(2); }
+  }
   renderer.shadowMap.needsUpdate = true;
+  if (!envHDR && entorno.estado.hdr) {   // el HDRI del exterior pasa a ser la luz ambiente y los reflejos
+    envHDR = pmrem.fromEquirectangular(entorno.estado.hdr).texture;
+    scene.environmentRotation.y = entorno.estado.rot; luzAmbiente(); poke(20);
+  }
   if (composer) composer.render(dt); else renderer.render(scene, camera);
 }
 requestAnimationFrame(tick);
@@ -999,13 +1058,18 @@ requestAnimationFrame(tick);
 window.__ORA = { renderer, scene, camera, get composer() { return composer; } };
 window.APTO_API = {
   get ready() { return ready; },
+  setHora: h => setHora(h),
+  setQuality: q => setQuality(q),
+  entorno: () => ({ hdr: !!entorno.estado.hdr, arboles: entorno.estado.arboles, listo: entorno.estado.listo, envHDR: !!envHDR }),
+  mat: n => ({ map: !!mats[n]?.map, normal: !!mats[n]?.normalMap, rough: !!mats[n]?.roughnessMap, fisico: !!mats[n]?.isMeshPhysicalMaterial }),
+  puertas: () => puertasOcultas.map(d => +d.t.toFixed(2)),
   get state() {
     const p = toPlan(camera.position);
     const q = toPlan(controls.target);
     return {
       mode, balcony: balconyOn(), tourLen: TOUR_LEN, room: current, plan: { x: +p.x.toFixed(3), y: +p.y.toFixed(3) }, target: { x: +q.x.toFixed(3), y: +q.y.toFixed(3) },
       height: +camera.position.y.toFixed(3), tour: +tourT.toFixed(2), tourPlaying, chapter: tourChapter, floor: fin.piso, wall: fin.muros, kitchen: fin.cocina, bath: fin.bano,
-      preset: fin.preset, custom: fin.personalizado, flying: !!flight, frame, rendered, quality, technical: techView, environment: entorno.group.visible, poi: poiOpen?.id || null,
+      preset: fin.preset, custom: fin.personalizado, flying: !!flight, frame, rendered, quality, technical: techView, environment: entorno.group.visible, poi: poiOpen?.id || null, hora,
     };
   },
   get stats() {

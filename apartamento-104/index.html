@@ -42,20 +42,63 @@
   <aside class="panel" id="panel" aria-label="Opciones">
     <button type="button" class="panel-toggle" id="panelToggle" aria-expanded="false" aria-controls="panelBody" aria-label="Ver opciones">Opciones</button>
     <div id="panelBody">
-      <div class="p-k">Espacios · área neta</div>
-      <ul class="rooms" id="rooms"></ul>
-      <div class="p-k">Acabados ilustrativos</div>
-      <div class="swatches" id="floors" aria-label="Piso"></div>
-      <div class="swatches" id="walls" aria-label="Muros"></div>
-      <div class="p-k">Propuesta de diseño</div>
-      <label class="switch prop"><input type="checkbox" id="layerBalcony" checked> Balcón de 4,01 m² <small>no figura en los planos</small></label>
-      <div class="p-k">Capas</div>
-      <label class="switch"><input type="checkbox" id="layerFurniture" checked> Mobiliario de presentación</label>
-      <label class="switch"><input type="checkbox" id="layerDims"> Cotas del plano</label>
-      <label class="switch"><input type="checkbox" id="layerVerified"> Solo arquitectura verificada</label>
-      <p class="note">Planta, muros, vanos y aparatos: DWG. Alturas, acabados y muebles: ilustrativos. Balcón: propuesta sin validar. <a href="MEDIDAS.md" target="_blank" rel="noopener">Medidas</a></p>
+      <div class="tabs" id="tabs" role="tablist" aria-label="Opciones del apartamento">
+        <button type="button" role="tab" data-tab="espacios" aria-selected="true">Espacios</button>
+        <button type="button" role="tab" data-tab="acabados" aria-selected="false" tabindex="-1">Acabados</button>
+        <button type="button" role="tab" data-tab="capas" aria-selected="false" tabindex="-1">Capas</button>
+      </div>
+      <section data-pane="espacios" role="tabpanel" aria-label="Espacios">
+        <div class="p-k">Área neta medida en el DWG</div>
+        <ul class="rooms" id="rooms"></ul>
+      </section>
+      <section data-pane="acabados" role="tabpanel" aria-label="Acabados" hidden>
+        <div class="p-k">Propuesta de acabados</div>
+        <div class="presets" id="presets"></div>
+        <p class="preset-note" id="presetNote"></p>
+        <div class="fin-row"><span>Piso</span><div class="swatches" data-fin="piso" id="floors" aria-label="Piso"></div></div>
+        <div class="fin-row"><span>Muros</span><div class="swatches" data-fin="muros" id="walls" aria-label="Muros"></div></div>
+        <div class="fin-row"><span>Cocina</span><div class="swatches" data-fin="cocina" id="kitchen" aria-label="Cocina"></div></div>
+        <div class="fin-row"><span>Baños</span><div class="swatches" data-fin="bano" id="bath" aria-label="Baños"></div></div>
+        <p class="note">Acabados <b>ilustrativos y no contractuales</b>: no corresponden necesariamente a las especificaciones del proyecto.</p>
+      </section>
+      <section data-pane="capas" role="tabpanel" aria-label="Capas" hidden>
+        <div class="p-k">Propuesta de diseño</div>
+        <label class="switch prop"><input type="checkbox" id="layerBalcony" checked> Balcón de 4,01 m² <small>no figura en los planos</small></label>
+        <div class="p-k">Capas</div>
+        <label class="switch"><input type="checkbox" id="layerFurniture" checked> Mobiliario de presentación</label>
+        <label class="switch"><input type="checkbox" id="layerDims"> Cotas del plano</label>
+        <label class="switch"><input type="checkbox" id="layerVerified"> Solo arquitectura verificada</label>
+        <label class="switch"><input type="checkbox" id="layerQuality"> Calidad alta <small class="q">sombras de contacto</small></label>
+        <div class="p-k">Leyenda</div>
+        <ul class="legend">
+          <li class="verificado">Arquitectura del DWG</li>
+          <li class="provisional">Medida provisional</li>
+          <li class="ilustrativo">Mobiliario y acabados ilustrativos</li>
+          <li class="propuesta">Modificación propuesta</li>
+        </ul>
+        <p class="note">Planta, muros, vanos y aparatos: DWG. Alturas (2,40 m), losa y carpinterías: provisionales. Acabados, muebles y paisaje: ilustrativos. Balcón: propuesta sin validar. <a href="MEDIDAS.md" target="_blank" rel="noopener">Medidas</a></p>
+      </section>
     </div>
   </aside>
+
+  <p class="techtag" id="techTag" aria-live="polite"><b>Vista técnica</b> Planta del DWG · <i></i> alturas, losa y antepechos provisionales</p>
+  <p class="envtag" id="envTag" hidden>Entorno exterior conceptual · no representa la vista real</p>
+
+  <div id="pois" aria-label="Puntos de información"></div>
+  <div class="poi-card" id="poiCard" role="dialog" aria-labelledby="poiT" hidden>
+    <button type="button" class="x" id="poiClose" aria-label="Cerrar">×</button>
+    <small id="poiCat"></small><strong id="poiT"></strong><p id="poiD"></p>
+    <button type="button" class="link" id="poiAct" hidden>Cambiar acabados</button>
+  </div>
+
+  <div class="tourbar" id="tourbar" hidden>
+    <button type="button" class="tb-play" id="tourPlay" aria-label="Pausar recorrido"><span></span></button>
+    <div class="tb-info">
+      <p><small id="tourStep">1/12</small><span id="tourName">Vista general</span></p>
+      <div class="tb-bar" id="tourProgress" role="slider" aria-label="Avance del recorrido" aria-valuemin="0" aria-valuemax="100" tabindex="0"><b id="tourProg"></b><span id="tourChapters"></span></div>
+    </div>
+    <button type="button" class="tb-go" id="tourExplore">Explorar aquí</button>
+  </div>
 
   <nav class="modes" id="modes" aria-label="Modo de recorrido">
     <button type="button" data-mode="orbit" class="on" aria-pressed="true">Maqueta</button>

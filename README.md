@@ -98,3 +98,9 @@ Las ventanas intermedias conservan una tarjeta lateral compacta. En teléfonos,
 «Ver detalles» abre la información y las habitaciones; la salida permanece visible.
 «Tour privado» se mantiene disponible dentro del recorrido. Consulta el
 [comportamiento y las pruebas visuales](docs/responsive-panels.md).
+
+## Fidelidad visual con el original
+
+La ficha y el selector de escritorio son idénticos al demo de Nicolás; en móvil y tableta
+se usa la misma tarjeta anclada al piso elegido y fichas compactas. Detalles, pruebas y el
+iniciador para Mac: [docs/fidelidad-visual.md](docs/fidelidad-visual.md).

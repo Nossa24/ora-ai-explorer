@@ -253,7 +253,7 @@ body.tech .techtag { display: block; }
 
 /* ---------- apartamento 102: rótulo permanente de propuesta ---------- */
 .card .chip.prop2 { border-color: rgba(242, 200, 120, .7); color: #f2c878; border-style: dashed; }
-.propbanner { position: absolute; z-index: 11; left: var(--pad); top: 194px; margin: 0; padding: 6px 12px; pointer-events: none; white-space: nowrap;
+.propbanner { position: absolute; z-index: 11; left: var(--pad); top: 224px; margin: 0; padding: 6px 12px; pointer-events: none; white-space: nowrap;
   background: rgba(5, 9, 16, .78); border: 1px dashed rgba(242, 200, 120, .75); color: #f2c878; font: 600 8.5px/1.2 var(--sans); letter-spacing: .2em; text-transform: uppercase; }
 .propbanner span { display: block; margin-top: 4px; color: var(--mute); letter-spacing: .08em; text-transform: none; font-weight: 500; font-size: 9.5px; }
 body.tech .techtag { top: 120px; }

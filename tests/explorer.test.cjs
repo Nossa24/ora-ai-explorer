@@ -36,6 +36,12 @@ async function open(t, options = {}, query = '?scan=0') {
 async function plan(page, k = 5) {
   await page.evaluate(k => ORA_API.enter('day', 'T1', k), k);
   await page.waitForFunction(() => ORA_API.state.state === 'int' && !ORA_API.state.busy && ORA_API.state.mode === 'plan');
+  await expandPanel(page);
+}
+async function expandPanel(page) {
+  await page.locator('#panel').waitFor({ state: 'visible' });
+  const toggle = page.locator('#panelToggle');
+  if (await toggle.isVisible() && await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
 }
 async function exterior(page) {
   await page.waitForFunction(() => ORA_API.state.state === 'ext' && !ORA_API.state.busy && ORA_API.state.mode === null);
@@ -105,6 +111,7 @@ test('menú móvil: modos, Escape, clic exterior y cambio de tamaño', async t =
   await toggle.click(); await page.locator('button[data-tod="night"]').click();
   assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
   await toggle.click(); await page.setViewportSize({ width: 1200, height: 800 });
+  await page.waitForFunction(() => document.querySelector('#menuToggle').getAttribute('aria-expanded') === 'false');
   assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
   assert(await page.locator('[data-mode="amen"]').isVisible());
 });
@@ -239,6 +246,7 @@ for (const width of [390, 1440]) {
     assert.equal(await page.locator('#mediaLoading').isVisible(), false);
     assert.equal(await page.locator('#int').getAttribute('aria-busy'), 'false');
     assert.equal(await page.locator('#nav').isVisible(), false);
+    await expandPanel(page);
     await page.locator('#pRooms button').nth(1).click();
     await page.waitForFunction(() => ORA_API.state.mode === 'room');
     assert.equal(await page.locator('#nav').isVisible(), false);

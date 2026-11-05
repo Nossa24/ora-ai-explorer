@@ -22,7 +22,7 @@
     dot: $('#dot'), line: $('#tipLine'), tip: $('#tip'), hint: $('#hintTxt'), tod: $('#tod'),
     int: $('#int'), fx: $('#fx'), vwrap: $('#vwrap'), vid: $('#vid'), snap: $('#snap'),
     back: $('#back'), backTxt: $('#backTxt'), cap: $('#cap'), capK: $('#capK'), capT: $('#capT'),
-    chips: $('#chips'), panel: $('#panel'),
+    chips: $('#chips'), panel: $('#panel'), panelDetails: $('#panelDetails'), panelToggle: $('#panelToggle'),
     nav: $('#nav'), menuToggle: $('#menuToggle'), mediaStatus: $('#mediaStatus'), loading: $('#mediaLoading'),
   };
 
@@ -307,6 +307,23 @@
     el.menuToggle.hidden = interior;
     el.menuToggle.inert = interior;
   }
+  const sheetQuery = matchMedia('(max-width: 600px), (max-height: 500px)');
+  let panelExpanded = false;
+  function syncPanel() {
+    const expanded = !sheetQuery.matches || panelExpanded;
+    if (!expanded && el.panelDetails.contains(document.activeElement)) el.panelToggle.focus();
+    el.panelDetails.hidden = !expanded;
+    el.panelToggle.setAttribute('aria-expanded', String(expanded));
+    el.panelToggle.textContent = expanded ? 'Ocultar detalles' : 'Ver detalles';
+  }
+  el.panelToggle.addEventListener('click', () => {
+    if (!cur || cur.exiting || cur.mode !== 'plan') return;
+    panelExpanded = !panelExpanded;
+    syncPanel();
+  });
+  sheetQuery.addEventListener('change', () => { panelExpanded = false; syncPanel(); });
+  syncPanel();
+
   function setLoading(loading) {
     el.loading.hidden = !loading;
     el.int.setAttribute('aria-busy', String(loading));
@@ -383,7 +400,10 @@
 
     tl = gsap.timeline({
       paused: true,
-      onComplete: () => { busy = false; state = 'int'; document.body.classList.add('is-int'); document.body.classList.remove('is-ext'); },
+      onComplete: () => {
+        busy = false; state = 'int'; document.body.classList.add('is-int'); document.body.classList.remove('is-ext');
+        if (cur?.planReady) onPlan();
+      },
       onReverseComplete: afterExit,
     });
     tl.to(view, { tx, ty, s: s1, duration: zoomT, ease: 'power3.inOut', onUpdate: applyView }, 0)
@@ -490,7 +510,10 @@
   }
   vid.addEventListener('error', () => { if (cur) mediaFailure(cur); });
   function prepareInterior() {
+    panelExpanded = false; syncPanel();
     gsap.set([el.panel, el.chips, el.cap, el.back], { autoAlpha: 0 });
+    gsap.set($('#pBack'), { autoAlpha: 1 });
+    gsap.set(el.back, { autoAlpha: 1 });
     const u = cur.unit;
     // panel
     $('#pK').textContent = `PISO ${cur.h.floorNo} · ${u.status}`;
@@ -572,10 +595,18 @@
   function hideUI(list) { gsap.to(list, { autoAlpha: 0, duration: .25, overwrite: 'auto' }); }
 
   function onPlan() {
+    if (!cur || cur.exiting) return;
+    cur.planReady = true;
+    // No mostrar controles que todavía descartarían un clic durante la transición.
+    if (state !== 'int' || busy) return;
     setLoading(false);
     cur.mode = 'plan'; cur.busy = false;
     el.backTxt.textContent = 'Volver a la torre';
-    showUI([el.panel, el.back]);
+    // El panel ya contiene la salida: evita duplicarla y tapar las habitaciones.
+    gsap.killTweensOf(el.back);
+    gsap.set(el.back, { autoAlpha: 0 });
+    gsap.set($('#pBack'), { autoAlpha: 1 });
+    showUI([el.panel]);
   }
   function enterRoom(i) {
     const u = cur.unit;
@@ -593,6 +624,9 @@
     const session = cur;
     cur.busy = true;
     const u = cur.unit;
+    gsap.set($('#pBack'), { autoAlpha: 0 });
+    el.backTxt.textContent = 'Volver a la torre';
+    showUI([el.back]);
     hideUI([el.panel, el.cap]);
     try {
       if (cur.mode === 'plan' && i === 0 && !cur.staticPlayback) {
@@ -608,6 +642,9 @@
     if (!cur || cur.busy) return;
     const session = cur;
     cur.busy = true;
+    gsap.set($('#pBack'), { autoAlpha: 0 });
+    el.backTxt.textContent = 'Volver a la torre';
+    showUI([el.back]);
     hideUI([el.cap, el.chips]);
     try {
       await dissolve(cur.unit.plan.hold, { fade: .5 });

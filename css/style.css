@@ -38,7 +38,7 @@ body.is-int #ext { visibility: hidden; }
 .brand-name { font: 500 15px/1 var(--serif); letter-spacing: .36em; }
 .brand-sep { width: 1px; height: 16px; background: var(--line); }
 .brand-tag { font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--mute); white-space: nowrap; }
-.nav { display: flex; align-items: center; gap: clamp(14px, 2.2vw, 30px); }
+.nav { margin-left: auto; display: flex; align-items: center; gap: clamp(14px, 2.2vw, 30px); }
 .nav button {
   background: none; border: 0; border-bottom: 1px solid transparent; color: var(--mute);
   font: 500 9.5px/1 var(--sans); letter-spacing: .24em; text-transform: uppercase; padding: 8px 0; cursor: pointer;
@@ -51,6 +51,7 @@ body.is-int #ext { visibility: hidden; }
   transition: background .2s;
 }
 .cta:hover { background: #fff1c9; }
+.bar > .cta { margin-left: calc(clamp(14px, 2.2vw, 30px) - 16px); }
 
 .menu-toggle { display: none; }
 .nav[hidden], .menu-toggle[hidden] { display: none; }
@@ -202,6 +203,10 @@ body.mode-amen #hot .pins { display: inline; }
 .btn.solid { background: var(--gold-2); color: #1a1408; border-color: var(--gold-2); }
 .btn.solid:hover { background: #fff1c9; }
 
+.panel-toggle { display: none; }
+#panelDetails { display: contents; }
+#panelDetails[hidden] { display: none; }
+
 /* ---------- capa de transición ---------- */
 #fx { position: absolute; inset: 0; z-index: 6; pointer-events: none; visibility: hidden; overflow: hidden; }
 #fx .part { position: absolute; inset: 0; will-change: transform, opacity; }
@@ -212,7 +217,9 @@ body.mode-amen #hot .pins { display: inline; }
 @media (max-width: 900px) {
   .brand-sep, .brand-tag { display: none; }
   .menu-toggle { display: block; margin-left: auto; padding: 10px 14px; border: 1px solid var(--line); background: var(--glass); color: var(--gold-2); cursor: pointer; }
-  .nav { gap: 0; }
+  .nav { gap: 0; margin-left: 0; }
+  .nav:not(.open) { display: none; }
+  .bar > .cta { margin-left: 0; }
   .nav button { display: none; }
   .nav.open { position: absolute; top: 64px; right: var(--pad); min-width: 210px; padding: 12px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; border: 1px solid var(--line); background: var(--glass); backdrop-filter: blur(12px); }
   .nav.open button { display: block; padding: 14px; text-align: left; }
@@ -235,9 +242,50 @@ body.mode-amen #hot .pins { display: inline; }
   .cap { left: var(--pad); bottom: 128px; }
   .chips { left: var(--pad); right: var(--pad); bottom: 18px; overflow-x: auto; }
   .chips button { flex: 1; white-space: nowrap; }
-  .panel { left: var(--pad); right: var(--pad); top: auto; bottom: 18px; width: auto; transform: none; max-height: 56vh; overflow: auto; }
+  .panel { width: 256px; max-height: calc(100svh - 116px); overflow: auto; }
   #vid, #snap { object-fit: contain; }
 }
 @media (prefers-reduced-motion: reduce) {
   .vwrap.kb, #hot .fl.pent-hint, .hint i, #hot .pin circle.r, .media-loading::before { animation: none; }
+}
+
+/* La tarjeta de escritorio conserva sus reglas originales. Las ventanas intermedias
+   mantienen una tarjeta lateral, no una franja de ancho completo. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .panel { max-height: calc(100svh - 116px); overflow: auto; }
+}
+/* Hoja inferior solo en teléfonos o ventanas bajas: detalles optativos y salida fija. */
+@media (max-width: 600px), (max-height: 500px) {
+  .panel {
+    display: flex; flex-direction: column; left: var(--pad); right: var(--pad);
+    top: auto; bottom: max(18px, env(safe-area-inset-bottom)); width: auto;
+    transform: none; max-height: min(55svh, calc(100svh - 100px)); overflow: hidden;
+    padding: 14px 18px;
+  }
+  .p-k, .p-t, .p-cta { flex-shrink: 0; }
+  .p-k, .p-t { padding-right: 108px; }
+  .p-t { font-size: 28px; margin: 6px 0 10px; }
+  .panel-toggle {
+    display: block; position: absolute; right: 18px; top: 16px; min-height: 44px;
+    padding: 8px 10px; border: 1px solid var(--line); background: none; color: var(--gold-2);
+    font: 500 10px/1.3 var(--sans); letter-spacing: .08em; cursor: pointer;
+  }
+  .panel-toggle:hover { border-color: var(--gold); }
+  #panelDetails { display: block; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  #panelDetails[hidden] { display: none; }
+  .p-meta { margin-top: 4px; }
+  .p-desc { display: block; }
+  .p-rooms li button { min-height: 44px; }
+  .p-cta { gap: 8px; }
+  .p-cta .btn { min-height: 44px; }
+}
+@media (min-width: 601px) and (max-height: 500px) {
+  .panel { left: auto; width: min(360px, calc(100% - 2 * var(--pad))); max-height: calc(100svh - 100px); }
+}
+/* Si falta altura, solo los detalles se desplazan: la salida no sale de la tarjeta. */
+@media (min-width: 601px) and (max-width: 1100px) and (min-height: 501px),
+       (min-width: 901px) and (min-height: 501px) and (max-height: 600px) {
+  .panel { display: flex; flex-direction: column; max-height: calc(100svh - 116px); overflow: hidden; }
+  .p-k, .p-t, .p-cta { flex-shrink: 0; }
+  #panelDetails { display: block; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 }

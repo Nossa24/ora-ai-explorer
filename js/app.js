@@ -561,6 +561,18 @@
     $('#pDesc').textContent = u.desc;
     const list = $('#pRooms'); list.innerHTML = '';
     u.rooms.forEach((r, i) => { const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.textContent = r.label; b.onclick = () => goRoom(i); li.append(b); list.append(li); });
+    // apartamentos en 3D (solo pisos tipo de la torre que los tenga)
+    const apts = (C.apartments3d || {})[cur.h.tower === C.towers.T1 ? 'T1' : 'T2'] || [];
+    const box3d = $('#p3d'); box3d.innerHTML = '';
+    const show3d = cur.h.unitKey === 'res' && apts.length > 0;
+    box3d.hidden = !show3d;
+    if (show3d) apts.forEach(a => {
+      const link = document.createElement('a');
+      link.className = 'btn ghost p-3d-link'; link.href = a.href;
+      link.innerHTML = '<span></span><small></small>';
+      link.firstChild.textContent = a.label; link.lastChild.textContent = a.note;
+      box3d.append(link);
+    });
     // chips
     el.chips.innerHTML = '';
     u.rooms.forEach((r, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = r.label; b.dataset.i = i; b.onclick = () => goRoom(i); el.chips.append(b); });

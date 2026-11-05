@@ -25,6 +25,15 @@ window.ORA = {
     T2: { name: 'Torre 2', floors: 16, base: 2, pent: 2 },
   },
 
+  /* Apartamentos navegables en 3D (trabajo de Fabio Velásquez, desde los DWG de Pinares Ártica Home).
+   * Aparecen en la ficha de los pisos tipo de la torre indicada (no en los penthouse). */
+  apartments3d: {
+    T1: [
+      { label: 'Apto 104 en 3D', note: 'Desde el plano', href: 'apartamento-104/' },
+      { label: 'Apto 102 en 3D', note: 'Rediseño propuesto', href: 'apartamento-102/' },
+    ],
+  },
+
   images: {
     day: {
       label: 'Atardecer',

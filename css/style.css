@@ -198,6 +198,10 @@ body.mode-amen #hot .pins { display: inline; }
 .p-rooms li button:hover { color: var(--gold-2); padding-left: 4px; }
 .p-rooms li button:hover::after { opacity: 1; transform: none; }
 .p-cta { display: flex; gap: 8px; }
+.p-3d { display: flex; gap: 8px; margin-bottom: 8px; flex-shrink: 0; }
+.p-3d[hidden] { display: none; }
+.p-3d-link { gap: 4px; border-color: var(--gold); }
+.p-3d-link small { font: 500 8px/1.2 var(--sans); letter-spacing: .08em; text-transform: none; color: var(--gold); opacity: .85; }
 .btn { flex: 1; display: grid; place-items: center; padding: 12px 8px; text-align: center; text-decoration: none; cursor: pointer; font: 600 8.5px/1.2 var(--sans); letter-spacing: .18em; text-transform: uppercase; border: 1px solid var(--line); transition: background .2s, color .2s, border-color .2s; }
 .btn.ghost { background: none; color: var(--ink); }
 .btn.ghost:hover { border-color: var(--gold); }

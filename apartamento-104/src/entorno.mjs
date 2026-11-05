@@ -38,6 +38,24 @@ export function crearEntorno({ sunDir, W, H, balcon }) {
   const path = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 60), new THREE.MeshLambertMaterial({ color: '#c9c0b0' }));
   path.rotation.x = -Math.PI / 2; path.position.set(-6.5, Y + 0.01, 24); path.receiveShadow = true; g.add(path);
 
+  // galería de acceso conceptual frente a la puerta principal (el DWG del apartamento no la incluye)
+  const gal = new THREE.Group(); gal.name = 'ENTORNO_galeria';
+  const gw = 16, gd = 1.6, gx = 0.2, gz = -H / 2 - gd / 2;   // al norte del apartamento (Z negativo)
+  const piso = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.14, gd), new THREE.MeshLambertMaterial({ color: '#cbc5bb' }));
+  piso.position.set(gx, -0.07, gz); piso.receiveShadow = true; gal.add(piso);
+  const losa = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.14, gd + 0.3), new THREE.MeshLambertMaterial({ color: '#f1efea' }));
+  losa.position.set(gx, 2.47, gz - 0.15); losa.castShadow = true; gal.add(losa);
+  const baranda = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.05, 0.05), new THREE.MeshLambertMaterial({ color: '#3a3a3c' }));
+  baranda.position.set(gx, 1.0, gz - gd / 2 + 0.03); gal.add(baranda);
+  for (let x = -7; x <= 8; x += 1.5) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.0, 0.03), baranda.material); p.position.set(x, 0.5, gz - gd / 2 + 0.03); gal.add(p); }
+  const muroMat = new THREE.MeshLambertMaterial({ color: '#e7e3dc' });
+  for (const [x0, x1] of [[gx - gw / 2, -W / 2], [W / 2, gx + gw / 2]]) {   // fachada de acceso de las unidades vecinas (fuera del apartamento)
+    const mw = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 2.4, 0.15), muroMat); mw.position.set((x0 + x1) / 2, 1.2, -H / 2 + 0.075); gal.add(mw);
+  }
+  const luzGal = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.12), new THREE.MeshBasicMaterial({ color: '#fff1d8' }));
+  luzGal.position.set(-W / 2 + 0.65, 2.39, gz); gal.add(luzGal);
+  g.add(gal);
+
   // setos bajos y arbustos cerca de la fachada
   const hedgeMat = new THREE.MeshLambertMaterial({ color: '#4d6a3c' });
   const hedgeGeo = new THREE.BoxGeometry(1, 1, 1);

@@ -91,6 +91,37 @@ Antes de ofrecerlo en venta requiere:
 - viabilidad urbanística y modificación de la licencia de construcción;
 - aprobación del arquitecto del proyecto (fachada, privacidad con el apartamento 103 y desagüe).
 
+## Interiorismo de presentación (fase 3): qué se apoya en el plano
+
+El mobiliario se ubicó **sin mover ningún muro, vano ni aparato del DWG**. Una prueba automática
+verifica que, con todo el mobiliario y las hojas de puerta abiertas, se llega caminando a cada
+espacio y al balcón con un cuerpo de 0,44 m de diámetro. También verifica que ningún mueble ocupa un
+vano de puerta ni el paso de la puerta-ventana.
+
+| Espacio | Mobiliario ilustrativo | Relación con el plano |
+| --- | --- | --- |
+| Sala | Sofá de 2,00 m contra el medianero, mesa de centro, mueble de TV flotante de 0,30 m, lámpara de piso y planta | Deja libre el paso de 0,85 m hacia la circulación y el paso de 1,20 m al balcón |
+| Comedor | Mesa de 1,20 × 0,80 m con cuatro sillas y lámpara colgante | Quedan 0,62 m libres hacia la cocina por el costado oriental |
+| Cocina | Gabinetes superiores, campana, horno, nevera de columna contra el medianero y salpicadero | Mesón, lavaplatos y estufa en la posición del DWG; la nevera queda fuera del giro de la puerta de acceso |
+| Ropas | Lavadora, lavadero, gabinete alto y calentador de paso | El DWG no los ubica: se proponen contra el muro norte |
+| Alcoba principal | Cama de 1,40 × 1,90 m con cabecero contra el muro oriental, mesas de noche, armario de 1,00 m sobre el muro sur | El armario no tapa la ventana y queda fuera del giro de la puerta. La cama deja 0,64 m entre la hoja abierta y su costado, para llegar al baño |
+| Alcoba 3 | Cama de 1,40 × 1,90 m, mesas de noche y armario de 1,40 m sobre el muro norte | El armario queda fuera del giro de la puerta |
+| Alcoba 2 | **Propuesta de mobiliario: estudio** con escritorio bajo la ventana, sofá cama y biblioteca | La alcoba y su área (6,50 m²) no cambian; puede amoblarse como alcoba |
+| Baños | Mamparas de vidrio, muebles de lavamanos, espejos, revestimiento cerámico hasta 2,10 m | Ducha, sanitario y lavamanos en la posición del DWG |
+
+Las hojas de puerta se dibujan abiertas según el sentido de giro interpretado del plano. Al caminar,
+las hojas de las alcobas son obstáculos. Las de los baños abren hacia los aparatos y no se tratan
+como obstáculo, para que se pueda entrar.
+
+**Acabados.** Las tres propuestas (Contemporánea cálida, Moderna sofisticada, Minimalista luminosa)
+y sus opciones de piso, muros, cocina y baños son ilustrativas. No son especificaciones del proyecto
+ni forman parte de ningún ofrecimiento contractual.
+
+**Entorno exterior.** El cielo, el jardín con pinos, las colinas y los volúmenes lejanos son
+conceptuales. No representan la vista real del apartamento ni el nivel real del terreno: el jardín
+se dibujó 3,20 m por debajo del piso solo para dar profundidad a la vista. El visor lo rotula así
+siempre que está visible.
+
 ## Pendientes: el DWG no los contiene
 
 | Dato | Qué se necesita | Valor usado solo para visualizar |
@@ -101,9 +132,10 @@ Antes de ofrecerlo en venta requiere:
 | Antepecho y dintel de ventanas; tipo de ventanería | Fachadas o cuadro de ventanería | 0,90 m y 2,10 m; marco genérico |
 | Sentido de giro de las puertas interiores | Hojas con arco en planta | Interpretado de las hojas dibujadas |
 | Acabados de pisos, muros, cielos y carpintería | Cuadro de acabados | Paleta ilustrativa |
-| Lavadora y calentador en zona de ropas | Planta de instalaciones o mobiliario | Lavadora ilustrativa |
+| Lavadora, lavadero y calentador en zona de ropas | Planta de instalaciones o mobiliario | Lavadora, lavadero y calentador ilustrativos |
+| Vista y nivel del terreno | Implantación y fachadas | Entorno conceptual (jardín 3,20 m abajo) |
 | Orientación geográfica | Norte en la planta de implantación | Sol ilustrativo |
 
-Todo el mobiliario (sofá, comedor, camas, muebles y la mesa del balcón) es de presentación y no forma
-parte del plano.
-En el visor se oculta con la opción «Solo arquitectura verificada».
+Todo el mobiliario, los acabados, la carpintería y el entorno exterior son de presentación y no forman
+parte del plano. La opción «Solo arquitectura verificada» los oculta, junto con el balcón propuesto, y
+muestra en azul los elementos de altura provisional.

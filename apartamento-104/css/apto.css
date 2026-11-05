@@ -242,7 +242,7 @@ body.tech .techtag { display: block; }
   .tb-play { width: 30px; height: 30px; }
   .tb-info span { font-size: 13px; }
   .tb-go { padding: 8px 9px; letter-spacing: .12em; }
-  .envtag { bottom: auto; top: 118px; font-size: 7.5px; padding: 4px 8px; }
+  .envtag { bottom: auto; top: 152px; left: 12px; transform: none; font-size: 7.5px; padding: 4px 8px; letter-spacing: .1em; }
   .techtag { top: auto; bottom: 108px; font-size: 8.5px; white-space: normal; width: max-content; max-width: calc(100vw - 24px); text-align: center; }
   .poi-card { bottom: 112px; }
   body:has(.tourbar:not([hidden])) .panel { bottom: 112px; }

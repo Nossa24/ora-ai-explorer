@@ -7,7 +7,23 @@
  "advertencia": "No es planta verificada ni aprobada del proyecto. Conserva del DWG la envolvente, los vanos de fachada, la puerta de acceso y los ductos; la distribución interior es una propuesta.",
  "area_rotulada_dwg_m2": 60.42,
  "programa_original": "2 alcobas + estudio, 2 baños, sala-comedor, cocina, ropas (DWG)",
- "programa_propuesto": "2 habitaciones (principal con baño y vestier), 2 baños, sala-comedor con cocina abierta, ropas, balcón propuesto",
+ "programa_propuesto": "2 habitaciones (principal con baño y vestier), 2 baños, sala con cocina en U y barra de 2 puestos (sin comedor), columna de ropas junto al acceso, depósito, balcón propuesto",
+ "ropas": {
+  "ubicacion": "columna integrada a la cocina contra el medianero, inmediata al acceso",
+  "medidas": [
+   0.65,
+   1.05
+  ],
+  "cerramiento": "puertas corredizas en la carpintería de la cocina",
+  "frente_libre_m": 1.7,
+  "pendientes": [
+   "desagüe hasta el ducto D1 (≈3,0–3,5 m horizontales; pendiente ≥2 % ≈ 6–7 cm de afinado o paso por placa; alternativa: bomba de desagüe)",
+   "ventilación: secadora de condensación o bomba de calor y extracción mecánica hacia el ducto (sin ventana)",
+   "circuito eléctrico dedicado",
+   "bandeja antiderrame e impermeabilización",
+   "coincidencia de bajantes piso a piso"
+  ]
+ },
  "sistema_local": "x este, y norte, metros; origen = esquina exterior suroeste del apartamento 102; DWG = local + (1155568.032, 1023105.085)",
  "envolvente_exterior": [
   0,
@@ -287,7 +303,7 @@
    "origen": "propuesta"
   },
   {
-   "id": "ropas",
+   "id": "deposito",
    "rect": [
     2.75,
     4.67,
@@ -366,21 +382,26 @@
    "id": "meson_norte",
    "tipo": "meson",
    "rect": [
-    1.25,
+    1.55,
     6.85,
     2.95,
     7.45
    ]
   },
   {
-   "id": "meson_oeste",
+   "id": "peninsula",
    "tipo": "meson",
    "rect": [
     0.15,
-    5.0,
-    0.75,
-    6.4
-   ]
+    4.5,
+    1.6,
+    5.4
+   ],
+   "barra": {
+    "voladizo_sur": 0.3,
+    "altura": 0.9,
+    "puestos": 2
+   }
   },
   {
    "id": "nevera",
@@ -396,18 +417,28 @@
    "id": "lavaplatos",
    "tipo": "lavaplatos",
    "centro": [
-    0.46,
-    5.75
+    1.18,
+    5.11
    ]
   },
   {
    "id": "estufa",
    "tipo": "estufa",
    "rect": [
-    1.75,
+    1.95,
     6.94,
-    2.35,
+    2.55,
     7.38
+   ]
+  },
+  {
+   "id": "columna_ropas",
+   "tipo": "ropas",
+   "rect": [
+    0.15,
+    5.4,
+    0.8,
+    6.45
    ]
   },
   {
@@ -474,20 +505,20 @@
    "id": "lavadora_secadora",
    "tipo": "lavadora",
    "rect": [
-    2.62,
-    5.3,
-    3.22,
-    5.95
+    0.15,
+    5.83,
+    0.78,
+    6.45
    ]
   },
   {
    "id": "lavadero",
    "tipo": "lavadero",
    "rect": [
-    3.22,
-    5.45,
-    3.58,
-    5.95
+    0.17,
+    5.42,
+    0.62,
+    5.8
    ]
   }
  ],
@@ -508,7 +539,7 @@
  "espacios": [
   {
    "id": "social",
-   "nombre": "Sala · comedor · cocina",
+   "nombre": "Sala · cocina · barra",
    "area_neta_m2": 19.1,
    "piso_rectangulos": [
     [
@@ -676,8 +707,8 @@
    ]
   },
   {
-   "id": "ropas",
-   "nombre": "Ropas",
+   "id": "deposito",
+   "nombre": "Depósito",
    "area_neta_m2": 1.11,
    "piso_rectangulos": [
     [
@@ -698,45 +729,45 @@
  "mobiliario": {
   "sofa": [
    0.15,
-   0.8,
-   1.05,
-   2.8
+   1.0,
+   1.0,
+   3.2
   ],
   "mesa_centro": [
-   1.2,
    1.35,
-   1.68,
-   2.25
+   1.4,
+   1.7,
+   2.8
   ],
-  "mueble_tv": [
-   2.3,
-   1.05,
+  "tv": [
+   2.55,
+   1.3,
    2.599,
-   2.55
+   2.9
   ],
-  "planta_sala": [
-   2.27,
-   0.22,
-   2.58,
-   0.55
+  "butaca": [
+   0.25,
+   0.3,
+   0.95,
+   0.85
   ],
   "lampara_sala": [
-   0.18,
-   2.9,
-   0.46,
-   3.18
+   0.2,
+   3.3,
+   0.48,
+   3.58
   ],
-  "comedor": [
-   0.32,
-   3.45,
-   1.98,
-   4.65
+  "banquetas": [
+   0.43,
+   4.08,
+   1.41,
+   4.46
   ],
-  "mesa_comedor": [
-   0.75,
-   3.45,
-   1.55,
-   4.65
+  "estantes_deposito": [
+   2.62,
+   5.3,
+   3.58,
+   5.95
   ],
   "cama_2": [
    2.75,
@@ -811,15 +842,15 @@
    7.45
   ],
   "balcon_sillas": [
-   1.5,
+   0.17,
    -1.45,
-   2.58,
+   1.25,
    -0.2
   ],
   "balcon_jardinera": [
-   0.17,
+   2.27,
    -1.62,
-   0.47,
+   2.57,
    -0.85
   ]
  },
@@ -828,22 +859,77 @@
    "medida": 2.449,
    "a": [
     0.15,
-    3.0
+    3.85
    ],
    "b": [
     2.599,
-    3.0
+    3.85
    ]
   },
   {
-   "medida": 7.3,
+   "medida": 1.45,
    "a": [
-    0.4,
-    0.15
+    0.15,
+    5.0
    ],
    "b": [
-    0.4,
-    7.45
+    1.6,
+    5.0
+   ]
+  },
+  {
+   "medida": 0.9,
+   "a": [
+    1.6,
+    4.9
+   ],
+   "b": [
+    2.5,
+    4.9
+   ]
+  },
+  {
+   "medida": 0.85,
+   "a": [
+    1.7,
+    2.0
+   ],
+   "b": [
+    2.55,
+    2.0
+   ]
+  },
+  {
+   "medida": 1.2,
+   "a": [
+    1.4,
+    -0.3
+   ],
+   "b": [
+    2.599,
+    -0.3
+   ]
+  },
+  {
+   "medida": 1.7,
+   "a": [
+    0.8,
+    6.0
+   ],
+   "b": [
+    2.5,
+    6.0
+   ]
+  },
+  {
+   "medida": 0.7,
+   "a": [
+    0.855,
+    6.65
+   ],
+   "b": [
+    1.55,
+    6.65
    ]
   },
   {
@@ -899,28 +985,6 @@
    "b": [
     6.65,
     6.0
-   ]
-  },
-  {
-   "medida": 2.66,
-   "a": [
-    6.2,
-    4.79
-   ],
-   "b": [
-    6.2,
-    7.45
-   ]
-  },
-  {
-   "medida": 2.5,
-   "a": [
-    2.75,
-    4.25
-   ],
-   "b": [
-    5.25,
-    4.25
    ]
   }
  ],
@@ -2159,12 +2223,12 @@
    ],
    "altura": 2.1,
    "paso_libre": [
-    0.15,
-    1.35
+    1.4,
+    2.599
    ],
    "hojas_cerradas": [
-    1.35,
-    2.599
+    0.15,
+    1.4
    ]
   },
   "requiere_validacion": [

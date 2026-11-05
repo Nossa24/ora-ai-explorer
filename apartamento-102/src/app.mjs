@@ -13,8 +13,35 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { setTextureSize, anisotropy, cacheSize } from '../../apartamento-104/src/texturas.mjs';
-import { OPCIONES, PRESETS, FIJOS, aplicar, opcion, ambiente } from '../../apartamento-104/src/acabados.mjs';
+import { RECETAS, OPCIONES, PRESETS, FIJOS, aplicar, opcion, ambiente as ambienteBase } from '../../apartamento-104/src/acabados.mjs';
 import { crearEntorno, NIVEL_TERRENO } from '../../apartamento-104/src/entorno.mjs';
+
+// ------------------------------------------------------------------ propuesta monocromática (solo en el 102)
+// Paleta en blanco, grises y negro mate, pedida para la propuesta con barra. Ilustrativa, no contractual.
+Object.assign(RECETAS, {
+  microcemento_gris: { gen: 'microcemento', base: '#bdbab4', sombra: '#9c9993', seed: 35, rough: 0.5 },
+  negro_mate: { gen: 'chapa', claro: '#2c2c2e', oscuro: '#232325', seed: 57, contraste: 0.1, rough: 0.7 },
+  marmol_gris: { gen: 'marmol', base: '#e9e8e5', veta: '#8a8986', veta2: '#b5b4b0', intensidad: 0.7, seed: 27, rough: 0.14 },
+  baldosa_gris_grande: { gen: 'piedra', base: '#a7a5a1', veta: '#c2c0bb', lx: 0.6, ly: 1.2, junta: '#8d8b87', rough: 0.3, vetas: 0.2, seed: 19 },
+  piso_bano_gris: { gen: 'piedra', base: '#6f6e6b', veta: '#85847f', lx: 0.6, ly: 0.6, junta: '#5a5956', rough: 0.4, vetas: 0.2, seed: 20 },
+  tapete_mono: { gen: 'tapete', base: '#8e8c88', linea: '#b5b3ae', seed: 84 },
+  cuadro_mono: { gen: 'cuadro', fondo: '#ecebe8', a: '#1d1d1f', b: '#8d8c88', c: '#c9c8c4', seed: 104 },
+});
+OPCIONES.piso.push({ id: 'microcemento_gris', nombre: 'Microcemento gris perla', muestra: 'linear-gradient(135deg,#c4c1bb,#a19e98)', m: { piso_madera: { t: 'microcemento_gris', n: 0.4 }, guardaescoba: { c: '#2c2c2e', r: 0.6 } } });
+OPCIONES.muros.push({ id: 'blanco_puro', nombre: 'Blanco puro', muestra: '#f4f4f2', m: { muro: { t: 'pintura', c: '#f6f6f4', n: 0.5 } } });
+OPCIONES.cocina.push({ id: 'negro_marmol', nombre: 'Negro mate y mármol gris', muestra: 'linear-gradient(90deg,#2c2c2e 50%,#e2e1de 50%)',
+  m: { gabinete_cocina: { t: 'negro_mate', r: 0.7 }, meson: { t: 'marmol_gris', n: 0.2 }, salpicadero: { t: 'marmol_gris', n: 0.2 } } });
+OPCIONES.bano.push({ id: 'gris_negro', nombre: 'Piedra gris y negro mate', muestra: 'linear-gradient(90deg,#a7a5a1 50%,#2c2c2e 50%)',
+  m: { revestimiento_bano: { t: 'baldosa_gris_grande', n: 0.6 }, piso_ceramica: { t: 'piso_bano_gris', n: 0.5 }, mueble_bano: { t: 'negro_mate', r: 0.7 }, meson_bano: { t: 'marmol_gris', n: 0.2 } } });
+PRESETS.unshift({ id: 'monocromatica', nombre: 'Monocromática elegante', corto: 'Monocromática', descripcion: 'Blanco, grises y negro mate; mármol gris y metal negro', piso: 'microcemento_gris', muros: 'blanco_puro', cocina: 'negro_marmol', bano: 'gris_negro' });
+const AMB_MONO = {
+  tela_sofa: { t: 'tela_lino', c: '#b9b8b5' }, tela_acento: { t: 'tela_lino', c: '#3a3a3c' }, tela_cama: { t: 'tela_lino', c: '#f2f2f0' },
+  tela_silla: { t: 'tela_boucle', c: '#2f2f31' }, tela_cortina: { t: 'tela_lino', c: '#e6e5e2' }, toalla: { t: 'tela_boucle', c: '#d9d8d5' },
+  madera_mueble: { t: 'negro_mate' }, laca_mueble: { t: 'laca_blanca', c: '#f1f1ef' }, carpinteria: { t: 'negro_mate' }, marco_puerta: { t: 'negro_mate' },
+  puerta_entrada: { t: 'negro_mate' }, laton: { c: '#1d1d1f', r: 0.45, mt: 0.8 }, textil_tapete: { t: 'tapete_mono' }, cuadro: { t: 'cuadro_mono' },
+  maceta: { c: '#2a2a2c', r: 0.6 }, ceramica_deco: { c: '#efeeeb', r: 0.35 },
+};
+const ambiente = id => (id === 'monocromatica' ? AMB_MONO : ambienteBase(id));
 
 const DATA = window.APTO102;
 const geo = DATA.geo;
@@ -90,8 +117,8 @@ scene.add(sun); scene.add(sun.target);
 // también en teléfonos, un grupo fijo de 4 luces puntuales y 2 luces de ventana se asigna a las fuentes más
 // cercanas al visitante, con transición suave de intensidad.
 const LIGHTS = {   // [x, y, intensidad] — posiciones bajo las luminarias del GLB
-  social: [[1.37, 1.2, 2.2], [1.15, 4.05, 1.6], [1.6, 6.2, 1.6]], hall: [[3.9, 4.25, 0.9]], habitacion_2: [[4.0, 1.9, 1.5]], principal: [[6.5, 2.4, 1.7]],
-  bano_principal: [[5.75, 6.0, 1.0]], vestier: [[7.1, 6.0, 0.7]], bano_social: [[4.2, 5.8, 0.8]], ropas: [[3.1, 5.3, 0.5]],
+  social: [[1.37, 1.2, 2.2], [1.15, 3.75, 1.6], [1.6, 6.3, 1.6]], hall: [[3.9, 4.25, 0.9]], habitacion_2: [[4.0, 1.9, 1.5]], principal: [[6.5, 2.4, 1.7]],
+  bano_principal: [[5.75, 6.0, 1.0]], vestier: [[7.1, 6.0, 0.7]], bano_social: [[4.2, 5.8, 0.8]], deposito: [[3.1, 5.3, 0.5]],
 };
 const SRC_P = Object.values(LIGHTS).flat().map(([x, y, k]) => ({ pos: toScene(x, y, 2.25), k }));
 const SALA_V = geo.ventanas.reduce((a, b) => (b.ancho > a.ancho ? b : a));
@@ -201,7 +228,7 @@ new GLTFLoader().parse(base64ToBuffer(DATA.glb), '', gltf => {
   });
   buildMirrors(); updateMirrors();
   aplicar(mats, FIJOS);
-  setPreset('calida');
+  setPreset('monocromatica');
   groups.cielo.forEach(o => { o.visible = false; });
   anisotropy(renderer);
   buildHotspots(); buildPois(); buildDims(); buildTour(); applyLayers(); resetOrbit(true);
@@ -273,15 +300,15 @@ for (const [tipo, lista] of Object.entries(OPCIONES)) {
 
 // ------------------------------------------------------------------ espacios: puntos de vista (elección de cámara, no del DWG)
 const VIEWS = {
-  social: { pos: [2.05, 0.85], look: [1.0, 6.5], orbit: [1.4, 3.8] },
+  social: { pos: [2.1, 0.85], look: [1.0, 6.0], orbit: [1.4, 3.8] },
   hall: { pos: [2.45, 4.25], look: [5.2, 4.25], orbit: [4.0, 4.2] },
   habitacion_2: { pos: [3.45, 3.2], look: [4.8, 0.5], orbit: [4.0, 1.9] },
   principal: { pos: [5.7, 4.2], look: [7.6, 2.4], orbit: [6.6, 2.4] },
   vestier: { pos: [7.2, 5.0], look: [7.3, 6.9], orbit: [7.3, 6.1] },
-  ropas: { pos: [3.1, 4.3], look: [3.0, 5.6], orbit: [3.1, 5.4] },
+  deposito: { pos: [3.1, 4.3], look: [3.0, 5.6], orbit: [3.1, 5.4] },
   bano_social: { pos: [4.2, 4.95], look: [4.3, 6.9], orbit: [4.2, 6.0] },
   bano_principal: { pos: [5.95, 5.1], look: [5.2, 6.9], orbit: [5.75, 6.0] },
-  balcon: { pos: [0.8, -0.35], look: [2.3, -1.6], orbit: [1.4, -0.8] },
+  balcon: { pos: [2.1, -0.3], look: [0.6, -1.4], orbit: [1.4, -0.8] },
 };
 const BALCON = PROP && { id: 'balcon', nombre: 'Balcón', area_neta_m2: PROP.area_util_m2, piso_rectangulos: [PROP.rect_util], propuesta: true };
 const allRooms = () => (BALCON ? [...geo.espacios, BALCON] : geo.espacios);
@@ -319,10 +346,12 @@ const CATS = {
 };
 const POIS = [
   { id: 'acceso', p: [0.65, 7.42, 1.85], cat: 'verificado', t: 'Puerta de acceso · 1,00 m', d: 'Vano y posición del DWG (P2). La altura de 2,10 m es provisional; la hoja es ilustrativa.' },
-  { id: 'cocina', p: [1.2, 6.3, 1.25], cat: 'propuesta', t: 'Cocina en L abierta', d: 'Propuesta: mesón oeste con lavaplatos y mesón norte con estufa, horno y nevera de columna, abiertos al comedor.' },
-  { id: 'ropas', p: [3.1, 5.4, 1.35], cat: 'propuesta', t: 'Ropas tras puerta corrediza', d: 'Propuesta: lavadora y secadora apiladas y lavadero, con acceso desde el hall. No interrumpe la cocina ni la circulación.' },
-  { id: 'ductos', p: [3.83, 5.25, 2.05], cat: 'verificado', t: 'Ductos del DWG', d: 'Los dos ductos verticales del plano se conservan. Los dos baños y la zona de ropas se agrupan junto a ellos.' },
-  { id: 'hall', p: [4.0, 4.24, 2.15], cat: 'propuesta', t: 'Hall de alcobas · 2,12 m²', d: 'Un solo hall reparte las dos habitaciones, el baño social y ropas: menos pasillo y más área útil en los recintos.' },
+  { id: 'cocina', p: [2.1, 6.9, 1.25], cat: 'propuesta', t: 'Cocina en U abierta', d: 'Propuesta: mesón norte con estufa y horno, nevera de columna y barra-península con lavaplatos. Sin comedor tradicional: la barra lo reemplaza.' },
+  { id: 'barra', p: [0.9, 4.6, 1.1], cat: 'propuesta', t: 'Barra de 2 puestos · 1,45 m', d: 'Propuesta: península de 1,45 × 0,90 m con voladizo de 0,30 m para dos banquetas. Deja un eje libre de al menos 0,85 m entre la cocina, la sala y el balcón.' },
+  { id: 'ropas', p: [0.82, 5.9, 1.4], cat: 'propuesta', t: 'Ropas integrada a la cocina', d: 'Propuesta: columna de 0,65 × 1,05 m junto al acceso, con lavadora-secadora apilada y lavadero tras puertas corredizas. Pendiente de viabilidad técnica: desagüe hasta el ducto (≈3,0–3,5 m), secadora de condensación o bomba de calor con extracción mecánica, circuito dedicado y bandeja antigoteo.' },
+  { id: 'ductos', p: [3.83, 5.25, 2.05], cat: 'verificado', t: 'Ductos del DWG', d: 'Los dos ductos verticales del plano se conservan y sirven a los dos baños. La conexión de la zona de ropas hasta ellos está pendiente de validar.' },
+  { id: 'hall', p: [4.0, 4.24, 2.15], cat: 'propuesta', t: 'Hall de alcobas · 2,12 m²', d: 'Un solo hall reparte las dos habitaciones, el baño social y el depósito: menos pasillo y más área útil en los recintos.' },
+  { id: 'deposito', p: [3.1, 5.4, 1.6], cat: 'propuesta', t: 'Depósito · 1,11 m²', d: 'Propuesta: el antiguo cuarto de ropas queda como depósito o despensa con estantería, tras una puerta corrediza.' },
   { id: 'habitacion_2', p: [4.0, 1.9, 1.2], cat: 'propuesta', t: 'Habitación 2 · 8,88 m²', d: 'Cama doble, armario de 1,40 m y escritorio bajo la ventana. La alcoba equivalente del plano original medía 2,50 × 2,52 m (6,30 m²).' },
   { id: 'principal', p: [6.6, 2.5, 1.3], cat: 'propuesta', t: 'Habitación principal · 11,39 m²', d: 'Suite con baño privado de 4,70 m² y vestier de 3,06 m², en el área que ocupaban el estudio y la alcoba del plano original.' },
   { id: 'bano_principal', p: [5.75, 6.9, 1.5], cat: 'propuesta', t: 'Baño principal · 4,70 m²', d: 'Propuesta: ducha de 1,78 m con mampara, doble lavamanos y sanitario suspendido.' },
@@ -616,8 +645,8 @@ function walkTo(p) { walkTarget = p; }
 
 // ------------------------------------------------------------------ recorrido cinematográfico en 12 capítulos
 // Puntos en planta [x, altura, y]; la trayectoria cruza solo vanos reales (prueba automática).
-const CHAPTERS = ['Vista general', 'Aproximación al acceso', 'Entrada y cocina', 'Sala y comedor', 'Balcón', 'Hall de alcobas',
-  'Habitación 2', 'Baño social y ropas', 'Habitación principal', 'Baño principal y vestier', 'Regreso a la zona social', 'Vista final'];
+const CHAPTERS = ['Vista general', 'Aproximación al acceso', 'Entrada, ropas y cocina', 'Sala y barra', 'Balcón', 'Hall de alcobas',
+  'Habitación 2', 'Baño social y depósito', 'Habitación principal', 'Baño principal y vestier', 'Regreso a la zona social', 'Vista final'];
 const K = (c, t, p, l, room = null) => ({ c, t, p, l, room });
 const TOUR_A = [
   K(0, 0, [11.0, 10.5, -5.5], [4.0, 0, 3.8]),
@@ -625,18 +654,18 @@ const TOUR_A = [
   K(1, 10.5, [-2.6, 4.2, 11.4], [0.65, 1.5, 7.6]),
   K(1, 14, [0.65, 1.65, 10.0], [0.65, 1.5, 7.0]),
   K(2, 17, [0.65, 1.6, 7.85], [1.0, 1.4, 5.5]),
-  K(2, 20, [1.2, 1.6, 6.55], [0.3, 1.1, 5.6], 'social'),
-  K(2, 23, [1.5, 1.6, 6.1], [2.2, 1.2, 7.45], 'social'),
-  K(3, 27, [2.25, 1.6, 5.0], [1.0, 1.0, 2.0], 'social'),
+  K(2, 20, [1.2, 1.6, 6.55], [0.2, 1.1, 5.9], 'social'),
+  K(2, 23, [1.85, 1.6, 6.0], [2.2, 1.2, 7.45], 'social'),
+  K(3, 27, [2.25, 1.6, 4.9], [0.9, 0.95, 4.3], 'social'),
   K(3, 31, [2.12, 1.55, 3.2], [0.6, 1.0, 1.4], 'social'),
   K(3, 35, [2.05, 1.5, 0.75], [0.6, 1.1, 3.0], 'social'),
 ];
-const TOUR_BAL = [   // el balcón propuesto como extensión de la sala
-  K(4, 38.5, [0.95, 1.6, 0.35], [1.4, 1.3, -1.6], 'social'),
-  K(4, 42, [0.8, 1.6, -0.6], [1.6, 1.0, -2.5], 'balcon'),
-  K(4, 45.5, [0.85, 1.6, -1.25], [0.0, 0.7, -8.0], 'balcon'),
-  K(4, 49, [1.0, 1.62, -1.1], [1.4, 1.2, 3.5], 'balcon'),
-  K(4, 52.5, [1.25, 1.6, 0.5], [2.2, 1.3, 3.6], 'social'),
+const TOUR_BAL = [   // el balcón propuesto como extensión de la sala; la hoja corrediza abre al este
+  K(4, 38.5, [2.0, 1.6, 0.45], [2.0, 1.3, -1.6], 'social'),
+  K(4, 42, [2.0, 1.6, -0.55], [1.0, 1.0, -1.5], 'balcon'),
+  K(4, 45.5, [1.9, 1.6, -1.25], [3.0, 0.7, -8.0], 'balcon'),
+  K(4, 49, [1.85, 1.62, -1.1], [1.2, 1.2, 3.5], 'balcon'),
+  K(4, 52.5, [2.05, 1.6, 0.6], [2.2, 1.3, 3.6], 'social'),
 ];
 const TOUR_WIN = [
   K(4, 38.5, [1.4, 1.6, 0.6], [1.4, 1.2, -6.0], 'social'),
@@ -675,10 +704,10 @@ const TOUR_B = [   // tiempos relativos al final del capítulo 4
   K(10, 74, [2.4, 1.6, 4.25], [1.0, 1.2, 1.0], 'social'),
   K(10, 77.5, [2.15, 1.6, 2.7], [0.9, 1.2, -1.5], 'social'),
   K(11, 81, [1.95, 1.65, 1.0], [1.3, 1.0, -6.0], 'social'),
-  K(11, 83.5, [1.0, 1.7, 0.5], [1.2, 1.0, -6.0], 'social'),
+  K(11, 83.5, [2.0, 1.7, 0.5], [1.6, 1.0, -6.0], 'social'),
 ];
-const TOUR_END_BAL = [K(11, 93, [-1.6, 4.4, -6.2], [1.4, 0.9, 0.2], null)];
-const TOUR_END_WIN = [K(11, 87.5, [1.25, 1.65, 0.6], [0.3, 1.0, -6.0], 'social')];
+const TOUR_END_BAL = [K(11, 93, [3.5, 4.4, -6.2], [1.4, 0.9, 0.2], null)];
+const TOUR_END_WIN = [K(11, 87.5, [1.9, 1.65, 0.6], [0.9, 1.0, -6.0], 'social')];
 let TOUR = [], tourCurve, lookCurve, TOUR_LEN = 0, tourSlopes = [];
 function buildTour() {
   const bal = balconyOn(), mid = bal ? TOUR_BAL : TOUR_WIN, off = mid[mid.length - 1].t;

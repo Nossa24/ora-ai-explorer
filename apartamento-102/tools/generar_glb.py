@@ -563,7 +563,7 @@ for w in g['ventanas']:
 node102('ARQ_Dinteles_Antepechos', m, 'provisional', 'Vanos del DWG; alturas de dintel y antepecho supuestas', 'arquitectura')
 node102('ILU_Antepecho_sala', m_sala, 'provisional', 'Antepecho supuesto de la ventana de la sala (se retira con el balcón propuesto)', 'sin_balcon')
 
-WET = ('bano_social', 'bano_principal', 'ropas')
+WET = ('bano_social', 'bano_principal')
 for r in g['espacios']:
     m = Mesh()
     for x0, y0, x1, y1 in r['piso_rectangulos']:
@@ -657,12 +657,11 @@ node102('ILU_Marcos_puertas', m, 'ilustrativo', 'Marcos y molduras ilustrativos'
 m = Mesh()
 for rid in ('bano_principal', 'bano_social'):
     clad(m, 'revestimiento_bano', rid, 0, 2.10)
-clad(m, 'revestimiento_ropas', 'ropas', 0, 1.30)
-wall_quad(m, 'salpicadero', 's', 1.25, 7.445, 2.95, 7.445, 0.90, 1.50)
-wall_quad(m, 'salpicadero', 'e', 0.155, 5.0, 0.155, 6.40, 0.90, 1.50)
-node102('ILU_Revestimientos', m, 'ilustrativo', 'Revestimientos de baños (2,10 m), ropas (1,30 m) y salpicadero de cocina', 'acabados')
+wall_quad(m, 'revestimiento_ropas', 'e', 0.155, 5.42, 0.155, 6.43, 0.0, 1.74)   # fondo cerámico de la columna de ropas
+wall_quad(m, 'salpicadero', 's', 1.55, 7.445, 2.95, 7.445, 0.90, 1.50)
+node102('ILU_Revestimientos', m, 'ilustrativo', 'Revestimientos de baños (2,10 m), fondo de la columna de ropas y salpicadero de cocina', 'acabados')
 m = Mesh()
-for rid in ('social', 'hall', 'habitacion_2', 'principal', 'vestier'):
+for rid in ('social', 'hall', 'habitacion_2', 'principal', 'vestier', 'deposito'):
     for side, xa, ya, xb, yb in wall_runs(rid):
         t = 0.012
         if side == 's':
@@ -675,8 +674,8 @@ for rid in ('social', 'hall', 'habitacion_2', 'principal', 'vestier'):
             B(m, 'guardaescoba', xa - t, ya, xa, yb, 0, 0.075)
 node102('ILU_Guardaescobas', m, 'ilustrativo', 'Guardaescobas ilustrativos', 'acabados')
 m = Mesh()
-DOWN = {'social': [(1.37, 1.0), (1.37, 2.3), (1.15, 4.05), (1.6, 6.2), (2.9, 6.8)], 'hall': [(3.4, 4.25), (4.6, 4.25)], 'habitacion_2': [(3.4, 1.8), (4.6, 1.8)],
-        'principal': [(6.0, 1.2), (7.0, 4.1)], 'bano_principal': [(5.75, 5.6), (5.75, 7.0)], 'vestier': [(7.05, 5.9)], 'bano_social': [(4.22, 5.6)], 'ropas': [(3.1, 5.0)]}
+DOWN = {'social': [(1.37, 1.0), (1.37, 2.3), (1.15, 3.75), (2.1, 5.6), (1.6, 6.4), (2.9, 6.8)], 'hall': [(3.4, 4.25), (4.6, 4.25)], 'habitacion_2': [(3.4, 1.8), (4.6, 1.8)],
+        'principal': [(6.0, 1.2), (7.0, 4.1)], 'bano_principal': [(5.75, 5.6), (5.75, 7.0)], 'vestier': [(7.05, 5.9)], 'bano_social': [(4.22, 5.6)], 'deposito': [(3.1, 5.0)]}
 for pts in DOWN.values():
     for x, y in pts:
         CY(m, 'cromo', x, y, 0.055, ALT - 0.012, 0.008, seg=20); CY(m, 'luz_calida', x, y, 0.042, ALT - 0.016, 0.006, seg=20)
@@ -702,13 +701,22 @@ def counter(m, x0, y0, x1, y1, front, doors):
             RB(m, 'gabinete_cocina', x1 - 0.02, ya, x1, yb, 0.10, 0.84, 0.004, k=1); B(m, 'acero', x1, ya + 0.03, x1 + 0.012, yb - 0.03, 0.80, 0.81)
         RB(m, 'meson', x0, y0, x1 + 0.025, y1, 0.84, 0.88, 0.006, k=2)
 counter(m, *fx['meson_norte']['rect'], 's', 3)
-counter(m, *fx['meson_oeste']['rect'], 'e', 2)
-sx_, sy_ = fx['lavaplatos']['centro']           # poceta en el mesón oeste, grifería contra el muro
-B(m, 'acero', sx_ - 0.19, sy_ - 0.24, sx_ + 0.19, sy_ + 0.24, 0.879, 0.882)
-B(m, 'vidrio_negro', sx_ - 0.16, sy_ - 0.21, sx_ + 0.16, sy_ + 0.21, 0.8825, 0.884)
-B(m, 'acero', sx_ - 0.15, sy_ - 0.20, sx_ + 0.15, sy_ + 0.20, 0.883, 0.8845)
-CY(m, 'cromo', sx_ - 0.21, sy_, 0.022, 0.88, 0.05, seg=16); CY(m, 'cromo', sx_ - 0.21, sy_, 0.012, 0.93, 0.30, seg=12)
-RB(m, 'cromo', sx_ - 0.212, sy_ - 0.012, sx_ - 0.02, sy_ + 0.012, 1.21, 1.235, 0.01, k=2); CY(m, 'cromo', sx_ - 0.03, sy_, 0.013, 1.12, 0.10, seg=12)
+# barra-península: muebles bajos hacia la cocina (norte) y voladizo de 0,30 m hacia la sala para dos banquetas
+px0, py0, px1, py1 = fx['peninsula']['rect']; vol = fx['peninsula']['barra']['voladizo_sur']
+B(m, 'metal_negro', px0, py0 + vol + 0.02, px1 - 0.06, py1 - 0.06, 0, 0.10)
+B(m, 'gabinete_cocina', px0, py0 + vol, px1 - 0.04, py1 - 0.02, 0.10, 0.84)
+for i in range(3):
+    xa = px0 + (px1 - 0.04 - px0) * i / 3 + 0.002; xb = px0 + (px1 - 0.04 - px0) * (i + 1) / 3 - 0.002
+    RB(m, 'gabinete_cocina', xa, py1 - 0.02, xb, py1, 0.10, 0.84, 0.004, k=1); B(m, 'acero', xa + 0.03, py1, xb - 0.03, py1 + 0.012, 0.80, 0.81)
+RB(m, 'gabinete_cocina', px1 - 0.04, py0, px1, py1, 0.0, 0.84, 0.004, k=1)              # costado en cascada hacia el eje de circulación
+B(m, 'gabinete_cocina', px0 + 0.02, py0 + vol - 0.02, px1 - 0.04, py0 + vol, 0.0, 0.84)  # panel de rodillas
+RB(m, 'meson', px0, py0, px1, py1 + 0.02, 0.84, 0.88, 0.006, k=2)
+sx_, sy_ = fx['lavaplatos']['centro']           # poceta en la península, grifería hacia la barra
+B(m, 'acero', sx_ - 0.24, sy_ - 0.19, sx_ + 0.24, sy_ + 0.19, 0.879, 0.882)
+B(m, 'vidrio_negro', sx_ - 0.21, sy_ - 0.16, sx_ + 0.21, sy_ + 0.16, 0.8825, 0.884)
+B(m, 'acero', sx_ - 0.20, sy_ - 0.15, sx_ + 0.20, sy_ + 0.15, 0.883, 0.8845)
+CY(m, 'cromo', sx_, sy_ - 0.21, 0.022, 0.88, 0.05, seg=16); CY(m, 'cromo', sx_, sy_ - 0.21, 0.012, 0.93, 0.30, seg=12)
+RB(m, 'cromo', sx_ - 0.012, sy_ - 0.212, sx_ + 0.012, sy_ - 0.02, 1.21, 1.235, 0.01, k=2); CY(m, 'cromo', sx_, sy_ - 0.03, 0.013, 1.12, 0.10, seg=12)
 ex0, ey0, ex1, ey1 = fx['estufa']['rect']
 RB(m, 'vidrio_negro', ex0, ey0, ex1, ey1, 0.88, 0.888, 0.004, k=1)
 for i in range(2):
@@ -718,8 +726,8 @@ for i in range(2):
 my0 = fx['meson_norte']['rect'][1]
 B(m, 'electro', ex0 + 0.01, my0 - 0.004, ex1 - 0.01, my0 + 0.01, 0.16, 0.75); B(m, 'vidrio_negro', ex0 + 0.06, my0 - 0.006, ex1 - 0.06, my0, 0.24, 0.58)
 B(m, 'acero', ex0 + 0.07, my0 - 0.035, ex1 - 0.07, my0 - 0.02, 0.65, 0.665)
-node102('APA_Cocina', m, 'propuesta', 'Cocina en L de la propuesta: mesón oeste con lavaplatos, mesón norte con estufa y horno', 'aparatos',
-        huella=[fx['meson_norte']['rect'], fx['meson_oeste']['rect']])
+node102('APA_Cocina', m, 'propuesta', 'Cocina en U de la propuesta: mesón norte con estufa y horno y barra-península de 2 puestos con lavaplatos', 'aparatos',
+        huella=[fx['meson_norte']['rect'], fx['peninsula']['rect']])
 
 def toilet2(m, rect, tank_side):
     """Sanitario suspendido con tanque en el muro indicado ('o' oeste, 'e' este)."""
@@ -770,20 +778,29 @@ shower(m, fx['ducha_social']['rect'], 's', 0.45)
 node102('APA_Bano_social', m, 'propuesta', 'Baño social de la propuesta: ducha, sanitario suspendido y lavamanos', 'aparatos',
         huella=[fx['sanitario_social']['rect'], fx['lavamanos_social']['rect']])
 m = Mesh()
+cx0, cy0, cx1, cy1 = fx['columna_ropas']['rect']
+B(m, 'gabinete_cocina', cx0, cy0, cx1, cy0 + 0.02, 0, 2.28); B(m, 'gabinete_cocina', cx0, cy1 - 0.02, cx1, cy1, 0, 2.28)   # costados
+B(m, 'gabinete_cocina', cx0, cy0, cx1, cy1, 2.26, 2.28)                                                                      # techo
 x0, y0, x1, y1 = fx['lavadora_secadora']['rect']
-for k_, (za, zb) in enumerate(((0.02, 0.86), (0.88, 1.72))):   # lavadora y secadora apiladas, frente al sur
-    RB(m, 'laca_mueble', x0, y0, x1, y1, za, zb, 0.02)
-    c = P((x0 + x1) / 2, y0)
-    m.cyl_axis('cromo', [c[0], (za + zb) / 2 - 0.04, c[1] - 0.004], 2, 0.19, 0.022, seg=40)
-    m.cyl_axis('vidrio_negro', [c[0], (za + zb) / 2 - 0.04, c[1] + 0.012], 2, 0.15, 0.012, seg=40)
-    B(m, 'metal_negro', x0 + 0.04, y0 - 0.004, x1 - 0.04, y0, zb - 0.10, zb - 0.03)
-a0, b0, a1, b1 = fx['lavadero']['rect']
-RB(m, 'revestimiento_ropas', a0, b0, a1, b1, 0, 0.86, 0.01, k=1); RB(m, 'ceramica_blanca', a0 - 0.005, b0 - 0.01, a1, b1, 0.86, 0.90, 0.01, k=2)
-B(m, 'vidrio_negro', a0 + 0.04, b0 + 0.05, a1 - 0.04, b1 - 0.06, 0.9, 0.902)
-CY(m, 'cromo', (a0 + a1) / 2, b1 - 0.04, 0.012, 1.0, 0.16, seg=10)
-RB(m, 'laca_mueble', 2.62, 5.62, 3.58, 5.95, 1.80, 2.30, 0.004, k=1)
-node102('APA_Ropas', m, 'propuesta', 'Zona de ropas de la propuesta: lavadora y secadora apiladas y lavadero, tras puerta corrediza', 'aparatos',
-        huella=[fx['lavadora_secadora']['rect'], fx['lavadero']['rect']])
+for (za, zb) in ((0.02, 0.86), (0.88, 1.72)):   # lavadora y secadora apiladas, frente al este
+    RB(m, 'laca_mueble', x0, y0, x1, y1 - 0.02, za, zb, 0.02)
+    c = P(x1, (y0 + y1) / 2)
+    m.cyl_axis('cromo', [c[0] - 0.006, (za + zb) / 2 - 0.04, c[1]], 0, 0.19, 0.022, seg=40)
+    m.cyl_axis('vidrio_negro', [c[0] - 0.012, (za + zb) / 2 - 0.04, c[1]], 0, 0.15, 0.012, seg=40)
+    B(m, 'metal_negro', x1 - 0.004, y0 + 0.04, x1 + 0.003, y1 - 0.08, zb - 0.10, zb - 0.04)   # panel de mandos, por fuera del canto redondeado
+a0, b0, a1, b1 = fx['lavadero']['rect']                                       # lavadero compacto con mueble
+RB(m, 'laca_mueble', a0, b0, a1, b1, 0, 0.86, 0.01, k=1); RB(m, 'ceramica_blanca', a0, b0, a1 + 0.01, b1, 0.86, 0.90, 0.01, k=2)
+B(m, 'vidrio_negro', a0 + 0.06, b0 + 0.05, a1 - 0.05, b1 - 0.05, 0.9, 0.902)
+CY(m, 'cromo', a0 + 0.04, (b0 + b1) / 2, 0.012, 1.0, 0.16, seg=10); RB(m, 'cromo', a0 + 0.03, (b0 + b1) / 2 - 0.01, a0 + 0.18, (b0 + b1) / 2 + 0.01, 1.14, 1.16, 0.008, k=1)
+B(m, 'gabinete_cocina', cx0, cy0 + 0.02, cx1 - 0.02, cy1 - 0.02, 1.74, 1.76)                                         # repisa
+RB(m, 'gabinete_cocina', cx1 - 0.02, cy0 + 0.02, cx1, cy1 - 0.02, 1.78, 2.26, 0.004, k=1)                             # gabinete alto
+B(m, 'toalla', cx0 + 0.05, cy0 + 0.08, cx1 - 0.10, cy0 + 0.45, 1.76, 1.86); B(m, 'libro_b', cx0 + 0.05, cy0 + 0.55, cx1 - 0.10, cy0 + 0.85, 1.76, 1.92)
+for k_, (ya, yb, xo) in enumerate(((cy0 + 0.01, cy0 + 0.545, 0.03), (cy0 + 0.02, cy0 + 0.555, 0.0))):   # dos hojas corredizas, recogidas sobre el lavadero
+    B(m, 'gabinete_cocina', cx1 + xo, ya, cx1 + xo + 0.02, yb, 0.02, 1.76)
+    B(m, 'metal_negro', cx1 + xo + 0.02, yb - 0.06, cx1 + xo + 0.025, yb - 0.04, 0.6, 1.3)
+B(m, 'metal_negro', cx1, cy0, cx1 + 0.055, cy1, 1.76, 1.78)                                                             # riel
+node102('APA_Ropas', m, 'propuesta', 'Zona de ropas de la propuesta: columna integrada a la cocina junto al acceso, con lavadora-secadora apilada, lavadero, almacenamiento y puertas corredizas. Desagüe y ventilación pendientes de viabilidad.', 'aparatos',
+        huella=[[cx0, cy0, cx1 + 0.055, cy1]])
 
 # ------------------------------------------------------------------ MOBILIARIO ILUSTRATIVO
 def furn(name, build, huella=(), nota='Mobiliario de presentación ilustrativo', group='mobiliario', **kw):
@@ -816,47 +833,55 @@ def sala(m):
             CY(m, 'metal_negro', xx, yy, 0.012, 0, 0.37, seg=8)
     books(m, x0 + 0.08, y0 + 0.20, x0 + 0.26, 0.41, depth=0.24, along='x')
     LA(m, 'ceramica_deco', (x0 + x1) / 2, y1 - 0.22, 0.41, [(0.05, 0), (0.08, 0.06), (0.06, 0.16), (0.035, 0.2), (0.04, 0.22)], seg=24)
-    RB(m, 'textil_tapete', 0.65, 0.95, 2.20, 2.95, 0, 0.012, 0.005, k=1)
-    a0, b0, a1, b1 = MOBI['mueble_tv']
-    RB(m, 'laca_mueble', a0, b0, a1 - 0.005, b1, 0.18, 0.52, 0.01, k=1); B(m, 'madera_mueble', a0 - 0.003, b0, a1 - 0.005, b1, 0.47, 0.52)
-    RB(m, 'pantalla', a1 - 0.035, (b0 + b1) / 2 - 0.62, a1 - 0.005, (b0 + b1) / 2 + 0.62, 0.95, 1.66, 0.008, k=1)
-    LA(m, 'ceramica_deco', a0 + 0.15, b0 + 0.18, 0.52, [(0.04, 0), (0.07, 0.08), (0.05, 0.22), (0.03, 0.27)], seg=20)
-    art(m, 'e', 0.152, 1.20, 0.152, 2.40, 1.15, 1.75)
+    RB(m, 'textil_tapete', 0.30, 1.20, 1.80, 3.05, 0, 0.012, 0.005, k=1)
+    a0, b0, a1, b1 = MOBI['tv']                     # televisor a ras del muro, sin mueble: libera el eje hacia el balcón
+    RB(m, 'pantalla', a0 + 0.005, (b0 + b1) / 2 - 0.62, a1 - 0.005, (b0 + b1) / 2 + 0.62, 0.95, 1.66, 0.008, k=1)
+    a0, b0, a1, b1 = MOBI['butaca']                 # butaca junto a la ventana
+    RB(m, 'tela_sofa', a0, b0, a1, b1, 0.12, 0.42, 0.06); RB(m, 'tela_sofa', a0, b0, a1, b0 + 0.16, 0.42, 0.82, 0.07)
+    RB(m, 'tela_sofa', a0, b0, a0 + 0.12, b1, 0.42, 0.62, 0.05); RB(m, 'tela_sofa', a1 - 0.12, b0, a1, b1, 0.42, 0.62, 0.05)
+    for xx in (a0 + 0.06, a1 - 0.06):
+        for yy in (b0 + 0.06, b1 - 0.06):
+            CY(m, 'metal_negro', xx, yy, 0.015, 0, 0.12, seg=8)
+    art(m, 'e', 0.152, 1.50, 0.152, 2.70, 1.15, 1.75)
     x, y = [(MOBI['lampara_sala'][i] + MOBI['lampara_sala'][i + 2]) / 2 for i in (0, 1)]
     CY(m, 'metal_negro', x, y, 0.13, 0, 0.02, seg=24); CY(m, 'metal_negro', x, y, 0.01, 0.02, 1.38, seg=8); LA(m, 'pantalla_lampara', x, y, 1.40, [(0.19, 0), (0.15, 0.26)], seg=28)
-    px, py = [(MOBI['planta_sala'][i] + MOBI['planta_sala'][i + 2]) / 2 for i in (0, 1)]
-    plant(m, px, py, 0, 1.25, 0.24, 0.15, 0.36)
 
 
-furn('MOB_Sala', sala, [MOBI[k] for k in ('mesa_centro', 'mueble_tv', 'lampara_sala', 'planta_sala')])
+furn('MOB_Sala', sala, [MOBI[k] for k in ('mesa_centro', 'tv', 'lampara_sala', 'butaca')])
 
 
-def comedor(m):
-    x0, y0, x1, y1 = MOBI['mesa_comedor']
-    RB(m, 'madera_mueble', x0, y0 + 0.05, x1, y1 - 0.05, 0.72, 0.755, 0.012, k=2)
-    for xx in (x0 + 0.07, x1 - 0.105):
-        for yy in (y0 + 0.12, y1 - 0.155):
-            B(m, 'madera_mueble', xx, yy, xx + 0.035, yy + 0.035, 0, 0.72)
-    for yy in (y0 + 0.33, y1 - 0.33):                 # dos sillas a cada lado (mirando al centro)
-        chair_x(m, x0 - 0.21, yy, 'e'); chair_x(m, x1 + 0.21, yy, 'o')
-    LA(m, 'ceramica_deco', (x0 + x1) / 2, (y0 + y1) / 2, 0.755, [(0.10, 0), (0.13, 0.03), (0.14, 0.06), (0.0, 0.06)], seg=28)
-    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-    CY(m, 'metal_negro', cx, cy, 0.004, 1.62, ALT - 1.62, seg=6)
-    LA(m, 'laton', cx, cy, 1.40, [(0.0, 0.24), (0.06, 0.235), (0.17, 0.17), (0.24, 0.04), (0.25, 0.0)], seg=36); SP(m, 'luz_calida', cx, cy, 1.43, 0.06, seg=12)
+def barra(m):
+    """Dos banquetas a 0,65 m frente al voladizo de la península y dos lámparas colgantes."""
+    for cx in (0.62, 1.22):
+        cy = 4.27
+        CY(m, 'metal_negro', cx, cy, 0.19, 0, 0.012, seg=24); CY(m, 'metal_negro', cx, cy, 0.022, 0.012, 0.60, seg=10)
+        CY(m, 'metal_negro', cx, cy, 0.16, 0.30, 0.008, seg=24, cap=False)
+        RB(m, 'tela_silla', cx - 0.19, cy - 0.17, cx + 0.19, cy + 0.17, 0.60, 0.67, 0.03)
+        RB(m, 'tela_silla', cx - 0.17, cy - 0.17, cx + 0.17, cy - 0.12, 0.67, 0.88, 0.025)
+        CY(m, 'metal_negro', cx, 4.95, 0.004, 1.55, ALT - 1.55, seg=6)
+        LA(m, 'metal_negro', cx, 4.95, 1.38, [(0.0, 0.18), (0.03, 0.175), (0.10, 0.06), (0.11, 0.0)], seg=28)
+        SP(m, 'luz_calida', cx, 4.95, 1.40, 0.04, seg=10)
+    LA(m, 'ceramica_deco', 0.40, 4.90, 0.88, [(0.09, 0), (0.12, 0.03), (0.13, 0.05), (0.0, 0.05)], seg=24)
+    for i, (dx, dy) in enumerate(((-0.03, 0.02), (0.04, -0.02), (0.0, 0.05))):
+        SP(m, 'planta_2' if i else 'ceramica_deco', 0.40 + dx, 4.90 + dy, 0.96, 0.04, seg=10)
 
 
-def chair_x(m, cx, cy, facing):
-    """Silla de comedor mirando al este ('e') o al oeste ('o')."""
-    s = 0.20
-    for ex in (-1, 1):
-        for ey in (-1, 1):
-            CY(m, 'metal_negro', cx + ex * 0.16, cy + ey * 0.16, 0.012, 0, 0.45, seg=8)
-    RB(m, 'tela_silla', cx - s, cy - s, cx + s, cy + s, 0.43, 0.49, 0.025)
-    bx = cx - s if facing == 'e' else cx + s - 0.05
-    RB(m, 'tela_silla', bx, cy - s + 0.01, bx + 0.05, cy + s - 0.01, 0.50, 0.88, 0.025)
+furn('MOB_Barra', barra, [MOBI['banquetas']], nota='Banquetas y lámparas ilustrativas de la barra')
 
 
-furn('MOB_Comedor', comedor, [MOBI['comedor']])
+def deposito(m):
+    x0, y0, x1, y1 = MOBI['estantes_deposito']
+    for xx in (x0 + 0.01, x1 - 0.03):
+        B(m, 'laca_mueble', xx, y1 - 0.42, xx + 0.02, y1 - 0.02, 0, 2.2)
+    for zz in (0.05, 0.55, 1.05, 1.55, 2.05):
+        B(m, 'laca_mueble', x0 + 0.01, y1 - 0.42, x1 - 0.01, y1 - 0.02, zz, zz + 0.02)
+    for i, zz in enumerate((0.57, 1.07, 1.57)):
+        for j in range(3):
+            xa = x0 + 0.08 + j * 0.30
+            B(m, ('libro_c', 'libro_b', 'laca_mueble')[(i + j) % 3], xa, y1 - 0.38, xa + 0.24, y1 - 0.06, zz, zz + 0.28)
+
+
+furn('MOB_Deposito', deposito, [[2.62, 5.53, 3.58, 5.95]], nota='Estantería ilustrativa del depósito (antiguo cuarto de ropas)')
 
 
 def cocina(m):
@@ -867,9 +892,6 @@ def cocina(m):
     B(m, 'luz_calida', x0 + 0.03, y1 - 0.30, x1 - 0.03, y1 - 0.28, 1.495, 1.5)
     ex0, ey0, ex1, ey1 = fx['estufa']['rect']
     RB(m, 'electro', ex0, y1 - 0.48, ex1, y1 - 0.34, 1.48, 1.50, 0.004, k=1)   # campana integrada bajo el gabinete
-    a0, b0, a1, b1 = fx['meson_oeste']['rect']
-    RB(m, 'gabinete_cocina', a0, b0, a0 + 0.34, b1, 1.50, 2.28, 0.004, k=1)
-    B(m, 'luz_calida', a0 + 0.28, b0 + 0.03, a0 + 0.30, b1 - 0.03, 1.495, 1.5)
     n0, m0, n1, m1 = fx['nevera']['rect']            # nevera de columna, frente al sur
     RB(m, 'electro', n0, m0, n1 - 0.005, m1, 0.02, 1.86, 0.012, k=2)
     B(m, 'metal_negro', n0 + 0.01, m0 - 0.002, n1 - 0.015, m0 + 0.002, 1.18, 1.185)
@@ -878,7 +900,6 @@ def cocina(m):
     RB(m, 'gabinete_cocina', n0, m0 + 0.05, n1 - 0.005, m1, 1.90, 2.28, 0.004, k=1)
     RB(m, 'madera_mueble', x0 + 0.06, y1 - 0.30, x0 + 0.40, y1 - 0.06, 0.88, 0.905, 0.01, k=1)
     LA(m, 'ceramica_deco', x1 - 0.25, y1 - 0.16, 0.88, [(0.05, 0), (0.06, 0.1), (0.055, 0.16), (0.0, 0.16)], seg=20)
-    plant(m, a0 + 0.30, b0 + 0.15, 0.88, 0.18, 0.09, 0.055, 0.09, pot='ceramica_deco')
 
 
 furn('MOB_Cocina', cocina, [fx['nevera']['rect']], nota='Gabinetes superiores, campana, nevera y accesorios ilustrativos de la propuesta')
@@ -995,7 +1016,7 @@ if PROP:
 
     def balcon(m):
         z = -dn
-        for x0_ in (1.53, 2.06):
+        for x0_ in (0.20, 0.73):
             x1_ = x0_ + 0.50; y0_, y1_ = -0.78, -0.25
             for xx in (x0_ + 0.04, x1_ - 0.04):
                 B(m, 'metal_negro', xx - 0.012, y0_ + 0.02, xx + 0.012, y1_ - 0.02, z, z + 0.03)
@@ -1004,14 +1025,14 @@ if PROP:
             RB(m, 'madera_mueble', x0_ + 0.02, y0_, x1_ - 0.02, y1_, z + 0.34, z + 0.38, 0.01, k=1)
             RB(m, 'tela_cama', x0_ + 0.04, y0_ + 0.02, x1_ - 0.04, y1_ - 0.02, z + 0.38, z + 0.45, 0.03)
             RB(m, 'tela_cama', x0_ + 0.04, y1_ - 0.12, x1_ - 0.04, y1_ - 0.03, z + 0.42, z + 0.80, 0.04)
-        CY(m, 'madera_mueble', 2.05, -1.17, 0.24, z + 0.42, 0.03, seg=32)
-        CY(m, 'metal_negro', 2.05, -1.17, 0.015, z, 0.42, seg=8); CY(m, 'metal_negro', 2.05, -1.17, 0.16, z, 0.01, seg=24)
-        LA(m, 'ceramica_deco', 2.05, -1.17, z + 0.45, [(0.04, 0), (0.05, 0.06), (0.03, 0.12)], seg=16)
+        CY(m, 'madera_mueble', 0.72, -1.17, 0.24, z + 0.42, 0.03, seg=32)
+        CY(m, 'metal_negro', 0.72, -1.17, 0.015, z, 0.42, seg=8); CY(m, 'metal_negro', 0.72, -1.17, 0.16, z, 0.01, seg=24)
+        LA(m, 'ceramica_deco', 0.72, -1.17, z + 0.45, [(0.04, 0), (0.05, 0.06), (0.03, 0.12)], seg=16)
         RB(m, 'maceta', *MOBI['balcon_jardinera'], z, z + 0.42, 0.02)
         for i in range(34):
-            px = rng.uniform(0.21, 0.43); py = rng.uniform(-1.58, -0.89)
+            px = rng.uniform(2.31, 2.53); py = rng.uniform(-1.58, -0.89)
             SP(m, 'planta_2' if i % 2 else 'planta', px, py, z + 0.48 + rng.uniform(0, 0.12), 0.045, sx=0.45, sy=0.45, sz=rng.uniform(3, 5), seg=6)
-        RB(m, 'textil_tapete', 1.47, -1.52, 2.57, -0.18, z, z + 0.008, 0.004, k=1)
+        RB(m, 'textil_tapete', 0.17, -1.52, 1.27, -0.18, z, z + 0.008, 0.004, k=1)
 
     furn('MOB_Balcon', balcon, [MOBI['balcon_sillas'], MOBI['balcon_jardinera']], nota='Mobiliario ilustrativo del balcón propuesto', group='propuesta_mobiliario')
 

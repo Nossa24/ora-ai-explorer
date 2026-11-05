@@ -6,9 +6,12 @@ El apartamento 102 se transforma de «2 alcobas + estudio» a **2 habitaciones a
 - una principal con baño privado y vestier;
 - una habitación 2 de 8,88 m²;
 - un baño social;
-- cocina abierta en L;
-- zona de ropas tras puerta corrediza;
-- balcón propuesto frente a la sala.
+- cocina abierta en U con barra-península de 2 puestos, sin comedor tradicional;
+- zona de ropas en una columna integrada a la cocina, junto al acceso (redes pendientes de viabilidad);
+- depósito en el antiguo cuarto de ropas;
+- balcón propuesto frente a la sala, con la puerta corrediza al este.
+
+La estética por defecto es «Monocromática elegante».
 
 La explicación, las áreas y lo que hay que validar están en [PROPUESTA.md](PROPUESTA.md).
 

@@ -70,6 +70,27 @@ ejemplo, hasta el eje del muro medianero), pero el plano no lo confirma.
 | Baño de alcoba | Ducha 1,16 × 0,80; sanitario contra el muro izquierdo; lavamanos junto a la puerta |
 | Baño social | Ducha 0,72 × 0,85; sanitario y lavamanos contra el muro superior |
 
+## Propuesta de diseño: balcón de 4,01 m² (no figura en los planos)
+
+Se solicitó el 5 de noviembre de 2026. Ningún apartamento de la Torre 1 tiene balcón ni terraza en
+los DWG, así que este balcón es una propuesta, no arquitectura verificada. En el visor aparece
+rotulado como «propuesta» y se desactiva con la opción «Balcón de 4,01 m²» o con «Solo arquitectura
+verificada». Los datos están en `data/propuesta-balcon.json`.
+
+| Elemento | Propuesta | Relación con el plano |
+| --- | --- | --- |
+| Ubicación | Fachada inferior, frente a la sala | Usa el vano existente de la ventana de la sala (2,475 m, DWG) |
+| Área útil | 4,01 m² (2,475 × 1,62 m) | Exterior a la envolvente: los 60,01 m² y la distribución interior no cambian |
+| Losa en voladizo | 2,575 × 1,70 m, 3 cm por debajo del piso interior | Nueva |
+| Baranda | 1,05 m, vidrio templado con pasamanos metálico | Nueva |
+| Acceso | Puerta-ventana corrediza de dos hojas, 2,10 m de alto, paso libre de 1,20 m | Reemplaza la ventana con antepecho supuesto |
+
+Antes de ofrecerlo en venta requiere:
+
+- diseño estructural del voladizo;
+- viabilidad urbanística y modificación de la licencia de construcción;
+- aprobación del arquitecto del proyecto (fachada, privacidad con el apartamento 103 y desagüe).
+
 ## Pendientes: el DWG no los contiene
 
 | Dato | Qué se necesita | Valor usado solo para visualizar |
@@ -83,5 +104,6 @@ ejemplo, hasta el eje del muro medianero), pero el plano no lo confirma.
 | Lavadora y calentador en zona de ropas | Planta de instalaciones o mobiliario | Lavadora ilustrativa |
 | Orientación geográfica | Norte en la planta de implantación | Sol ilustrativo |
 
-Todo el mobiliario (sofá, comedor, camas, muebles) es de presentación y no forma parte del plano.
+Todo el mobiliario (sofá, comedor, camas, muebles y la mesa del balcón) es de presentación y no forma
+parte del plano.
 En el visor se oculta con la opción «Solo arquitectura verificada».

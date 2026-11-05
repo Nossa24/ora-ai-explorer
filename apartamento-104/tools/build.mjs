@@ -15,9 +15,11 @@ mkdirSync(join(root, 'dist'), { recursive: true });
 const glb = readFileSync(join(root, 'modelo/apto-104.glb')).toString('base64');
 const geo = JSON.parse(readFileSync(join(root, 'data/geometria-104.json'), 'utf8'));
 for (const k of ['muros_poligonos', 'rotulos', 'identificacion']) delete geo[k];   // el visor no los usa
+// propuesta de balcón (no figura en el DWG): se embebe aparte para que el visor la rotule como tal
+const propuesta = JSON.parse(readFileSync(join(root, 'data/propuesta-balcon.json'), 'utf8'));
 writeFileSync(join(root, 'dist/datos.js'),
   '/* Generado por tools/build.mjs: modelo GLB y geometría verificada del apartamento 104. */\n' +
-  `window.APTO104=${JSON.stringify({ glb, geo })};\n`);
+  `window.APTO104=${JSON.stringify({ glb, geo, propuesta })};\n`);
 
 const esbuild = process.env.ESBUILD || 'esbuild';
 execFileSync(esbuild, [join(root, 'src/app.mjs'), '--bundle', '--format=iife', '--target=es2020', '--minify',

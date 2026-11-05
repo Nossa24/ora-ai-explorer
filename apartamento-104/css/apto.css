@@ -38,6 +38,10 @@ button, input { font-family: inherit; }
 .card .tw { font-size: 8.5px; letter-spacing: .24em; color: var(--mute); text-transform: uppercase; }
 .card strong { font: 500 20px/1.1 var(--serif); }
 .card .sp { font-size: 11px; color: var(--mute); }
+.card .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; max-width: 220px; }
+.card .chips .chip { margin-top: 0; }
+.card .chip.prop { border-color: rgba(242, 200, 120, .6); color: #f2c878; border-style: dashed; }
+body:not(.has-balcony) .card .chip.prop { display: none; }
 .card .chip { margin-top: 5px; align-self: flex-start; padding: 3px 8px; border: 1px solid rgba(143, 227, 176, .55); color: var(--ok); font-size: 8.5px; font-style: normal; letter-spacing: .22em; text-transform: uppercase; }
 
 /* rótulo cinematográfico del espacio */
@@ -91,6 +95,15 @@ button, input { font-family: inherit; }
   opacity: 0; transform: translateX(-4px); transition: opacity .2s, transform .2s; }
 .hs:hover span, .hs:focus-visible span, .hs.near span { opacity: 1; transform: none; }
 .hs.off { opacity: 0; pointer-events: none; }
+.hs.gone { display: none; }
+.hs.prop i { background: rgba(242, 200, 120, .25); border: 1.5px dashed #f2c878; box-shadow: 0 0 14px 3px rgba(242, 200, 120, .45); }
+.hs.prop span { border-style: dashed; border-color: rgba(242, 200, 120, .7); }
+.rooms li.prop button::before { background: none; border: 1px dashed #f2c878; width: 4px; height: 4px; }
+.rooms li.prop small { margin-left: 6px; font-size: 8px; letter-spacing: .18em; text-transform: uppercase; color: #f2c878; }
+.switch.prop small { display: block; font-size: 9px; color: #f2c878; letter-spacing: .04em; }
+.switch.prop { align-items: flex-start; }
+.switch.prop input { margin-top: 2px; }
+.dim.prop { border-style: dashed; border-color: #f2c878; color: #f2c878; }
 .dim { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); padding: 2px 6px; background: rgba(5, 9, 16, .82); border: 1px solid rgba(217, 194, 138, .5);
   color: var(--gold-2); font: 600 9px/1.2 var(--sans); letter-spacing: .06em; white-space: nowrap; }
 

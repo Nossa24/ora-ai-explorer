@@ -1,6 +1,6 @@
 """Genera el modelo 3D (GLB) del apartamento 104 a partir de geometria-104.json.
 
-Uso: python3 generar_glb.py <geometria-104.json> <salida.glb>
+Uso: python3 generar_glb.py <geometria-104.json> <salida.glb> [propuesta-balcon.json]
 
 Blender no está disponible en el entorno de trabajo, así que el GLB se escribe
 directamente (glTF 2.0 binario) con numpy. Cada nodo lleva en `extras`:
@@ -17,6 +17,8 @@ import numpy as np
 
 g = json.load(open(sys.argv[1]))
 OUT = sys.argv[2]
+PROP = json.load(open(sys.argv[3])) if len(sys.argv) > 3 else None   # propuesta de balcón (NO proviene del DWG)
+SALA_V = max(g['ventanas'], key=lambda w: w['ancho'])              # ventana de la sala (2,475 m)
 W, H = g['envolvente_exterior'][2:]
 
 # Supuestos de visualización (NO provienen del DWG)
@@ -101,6 +103,7 @@ MATS = {
     'tela_clara': ([0.80, 0.77, 0.72, 1], 0.95, 0), 'tela_acento': ([0.38, 0.43, 0.40, 1], 0.95, 0), 'madera_mueble': ([0.55, 0.40, 0.27, 1], 0.55, 0),
     'negro': ([0.08, 0.08, 0.09, 1], 0.35, 0.2), 'textil_tapete': ([0.74, 0.69, 0.60, 1], 1.0, 0), 'planta': ([0.25, 0.40, 0.27, 1], 0.8, 0),
     'ceramica_mate': ([0.55, 0.47, 0.40, 1], 0.85, 0), 'luz_calida': ([1.0, 0.92, 0.78, 1], 0.4, 0),
+    'piso_exterior': ([0.62, 0.60, 0.56, 1], 0.8, 0), 'vidrio_baranda': ([0.80, 0.90, 0.93, 0.22], 0.04, 0),
 }
 
 nodes = []   # (nombre, mesh, extras, translation, rotation_y_deg)
@@ -123,12 +126,14 @@ for d in g['puertas']:
     x0, y0, x1, y1 = d['rect']; a, b = P(x0, y0), P(x1, y1)
     m.box('muro', a[0], SUP['altura_puerta'], a[1], b[0], ALT, b[1], faces=['px', 'nx', 'pz', 'nz', 'ny'])
     m.box('muro_corte', a[0], ALT, a[1], b[0], ALT + 0.001, b[1], faces=['py'])
+m_sala = Mesh()
 for w in g['ventanas']:
     a, b = P(w['x0'], w['y0']), P(w['x1'], w['y1'])
-    m.box('muro', a[0], 0, a[1], b[0], SUP['antepecho_ventana'], b[1])
+    (m_sala if w is SALA_V else m).box('muro', a[0], 0, a[1], b[0], SUP['antepecho_ventana'], b[1])
     m.box('muro', a[0], SUP['dintel_ventana'], a[1], b[0], ALT, b[1], faces=['px', 'nx', 'pz', 'nz', 'ny'])
     m.box('muro_corte', a[0], ALT, a[1], b[0], ALT + 0.001, b[1], faces=['py'])
 node('ARQ_Dinteles_Antepechos', m, False, 'Vanos del DWG; alturas de dintel y antepecho supuestas')
+node('ILU_Antepecho_sala', m_sala, False, 'Antepecho supuesto de la ventana de la sala (se retira con la propuesta de balcón)', group='sin_balcon')
 
 for r in g['espacios']:
     m = Mesh()
@@ -157,7 +162,10 @@ node('ARQ_Cielo', m, False, 'Cielo raso a altura supuesta', group='cielo')
 
 # ------------------------------------------------------------------ VENTANAS Y PUERTAS (ilustrativas en vano verificado)
 m = Mesh()
-for w in g['ventanas']:
+for w in sorted(g['ventanas'], key=lambda v: v is SALA_V):
+    if w is SALA_V:   # la ventana de la sala va en su propio nodo: la propuesta de balcón la reemplaza
+        node('ILU_Ventaneria', m, False, 'Marcos y vidrios ilustrativos dentro de vanos verificados', group='ilustrativo')
+        m = Mesh()
     a, b = P(w['x0'], w['y0']), P(w['x1'], w['y1'])
     y0, y1 = SUP['antepecho_ventana'], SUP['dintel_ventana']
     if w['fachada'] == 'sur':
@@ -173,7 +181,7 @@ for w in g['ventanas']:
         m.box('marco', xc - 0.03, y0, a[1], xc + 0.03, y0 + 0.04, b[1]); m.box('marco', xc - 0.03, y1 - 0.04, a[1], xc + 0.03, y1, b[1])
         m.box('marco', xc - 0.03, y0, a[1], xc + 0.03, y1, a[1] - 0.04); m.box('marco', xc - 0.03, y0, b[1] + 0.04, xc + 0.03, y1, b[1])
         m.box('vidrio', xc - 0.006, y0 + 0.04, a[1] - 0.04, xc + 0.006, y1 - 0.04, b[1] + 0.04)
-node('ILU_Ventaneria', m, False, 'Marcos y vidrios ilustrativos dentro de vanos verificados', group='ilustrativo')
+node('ILU_Ventana_sala', m, False, 'Ventana ilustrativa de la sala en vano verificado de 2,475 m', group='sin_balcon')
 
 # hojas de puerta: bisagra y sentido interpretados de las hojas dibujadas en el plano
 hinges = {   # id: (bisagra local x, y, ángulo de la hoja abierta en grados, medido desde +x hacia +y de planta)
@@ -265,7 +273,7 @@ def sala(mm):
     c0, cz0 = at(2.27, 2.80); c1, cz1 = at(2.60, 1.00)            # mueble TV contra muro este
     mm.box('madera_mueble', c0, 0.1, cz0, c1, 0.5, cz1)
     mm.box('negro', c1 - 0.06, 0.95, cz0 + 0.25, c1 - 0.03, 1.62, cz1 - 0.25)
-    p0, pz0 = at(0.45, 0.45)
+    p0, pz0 = at(2.33, 0.42)   # esquina libre: no obstruye la puerta-ventana del balcón propuesto
     mm.cyl('ceramica_mate', p0, 0, pz0, 0.16, 0.38, rz=0.16); mm.sphere('planta', p0, 0.8, pz0, 0.34, 1, 1.25, 1)
 furn('MOB_Sala', sala)
 
@@ -353,6 +361,52 @@ def ropas(mm):
     mm.box('ceramica_blanca', c[0], 0.0, d[1], d[0], 0.85, c[1])
 furn('MOB_Ropas', ropas)
 
+# ------------------------------------------------------------------ PROPUESTA DE BALCÓN (no figura en el DWG)
+if PROP:
+    src = PROP['fuente']
+    lx0, ly0, lx1, ly1 = PROP['losa']['rect']; esp = PROP['losa']['espesor']; dn = PROP['losa']['desnivel']
+    m = Mesh()
+    a, b = P(lx0, ly0), P(lx1, ly1)
+    m.box('losa', a[0], -dn - esp, a[1], b[0], -dn - 0.02, b[1])                  # losa en voladizo
+    m.box('piso_exterior', a[0], -dn - 0.02, a[1], b[0], -dn, b[1], faces=['py', 'pz', 'px', 'nx'])
+    node('PROP_Balcon_losa', m, False, src, group='propuesta')
+    # baranda de vidrio con pasamanos sobre los tres bordes libres
+    m = Mesh(); hb = PROP['baranda']['altura'] - dn
+    ux0, uy0, ux1, uy1 = PROP['rect_util']
+    xw, xe, ys = ux0 - 0.01, ux1 + 0.01, uy0 - 0.01
+    for (x0_, y0_, x1_, y1_) in ((xw - 0.012, ys, xw, uy1), (xe, ys, xe + 0.012, uy1), (xw, ys - 0.012, xe, ys)):
+        p0, p1 = P(x0_, y0_), P(x1_, y1_)
+        m.box('vidrio_baranda', p0[0], -dn + 0.06, p0[1], p1[0], -dn + hb - 0.05, p1[1])
+        m.box('marco', p0[0] - 0.012, -dn, p0[1] - 0.012, p1[0] + 0.012, -dn + 0.06, p1[1] + 0.012)
+        m.box('acero', p0[0] - 0.02, -dn + hb - 0.05, p0[1] - 0.02, p1[0] + 0.02, -dn + hb, p1[1] + 0.02)
+    node('PROP_Balcon_baranda', m, False, src + ' Baranda ilustrativa de 1,05 m.', group='propuesta')
+    # puerta-ventana corrediza en el vano verificado de la sala
+    m = Mesh(); ac = PROP['acceso']; vx0, vy0, vx1, vy1 = ac['vano']; hp = ac['altura']
+    a, b = P(vx0, vy0), P(vx1, vy1); z0_, z1_ = min(a[1], b[1]), max(a[1], b[1])
+    m.box('marco', a[0], 0, z0_, b[0], 0.03, z1_)                                   # riel inferior
+    m.box('marco', a[0], hp - 0.05, z0_, b[0], hp, z1_)                             # cabezal
+    m.box('marco', a[0], 0, z0_, a[0] + 0.05, hp, z1_); m.box('marco', b[0] - 0.05, 0, z0_, b[0], hp, z1_)
+    cx0, cx1 = ac['hojas_cerradas']; mid = (cx0 + cx1) / 2
+    for k, (hx0, hx1) in enumerate(((cx0, mid + 0.03), (mid - 0.03, cx1))):     # dos hojas sobre la mitad fija
+        za = z0_ + 0.035 + k * 0.05
+        p0, p1 = P(hx0, 0), P(hx1, 0)
+        m.box('marco', p0[0], 0.03, za, p1[0], hp - 0.05, za + 0.04)
+        m.box('vidrio', p0[0] + 0.05, 0.10, za + 0.014, p1[0] - 0.05, hp - 0.12, za + 0.026)
+    node('PROP_Puerta_ventana_sala', m, False, src + ' Puerta-ventana corrediza en el vano de 2,475 m del DWG.', group='propuesta')
+    # mobiliario de balcón (ilustrativo)
+    m = Mesh()
+    cx, cz = P(1.85, -0.85)
+    m.cyl('negro', cx, -dn, cz, 0.02, 0.70, seg=10); m.cyl('madera_mueble', cx, -dn + 0.70, cz, 0.30, 0.03)
+    for dx in (-0.48, 0.48):
+        m.box('negro', cx + dx - 0.2, -dn + 0.42, cz - 0.2, cx + dx + 0.2, -dn + 0.46, cz + 0.2)
+        m.box('negro', cx + dx + (0.18 if dx > 0 else -0.22), -dn + 0.46, cz - 0.2, cx + dx + (0.22 if dx > 0 else -0.18), -dn + 0.85, cz + 0.2)
+        for ex in (-0.18, 0.16):
+            for ez in (-0.18, 0.16):
+                m.box('negro', cx + dx + ex, -dn, cz + ez, cx + dx + ex + 0.02, -dn + 0.42, cz + ez + 0.02)
+    px_, pz_ = P(0.45, -1.30)
+    m.cyl('ceramica_mate', px_, -dn, pz_, 0.18, 0.45); m.sphere('planta', px_, -dn + 0.85, pz_, 0.32, 1, 1.3, 1)
+    node('MOB_Balcon', m, False, 'Mobiliario de presentación ilustrativo del balcón propuesto', group='propuesta_mobiliario')
+
 # ------------------------------------------------------------------ escritura GLB
 buf = bytearray(); views = []; accessors = []; meshes = []; gl_nodes = []; materials = []; mat_index = {}
 
@@ -410,6 +464,7 @@ for name, mesh, extras, t, ry in nodes:
 
 root = {'name': 'Apto_104_Torre_1', 'children': list(range(len(gl_nodes))),
         'extras': {'proyecto': g['proyecto'], 'torre': g['torre'], 'apartamento': g['apartamento'], 'supuestos_visualizacion': SUP,
+                   'propuestas': ([{k: PROP[k] for k in ('id', 'estado', 'fuente', 'area_util_m2', 'requiere_validacion')}] if PROP else []),
                    'areas': g['areas'], 'pendientes': g['pendientes'], 'sistema': 'X este, Z sur, Y arriba; metros; centro = centro de la envolvente'}}
 gl_nodes.append(root)
 gltf = {'asset': {'version': '2.0', 'generator': 'ORA AI Explorer · generar_glb.py'}, 'scene': 0,

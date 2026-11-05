@@ -75,8 +75,9 @@ test('el visor dibuja el apartamento y ofrece un punto por espacio', async t => 
   const page = await open(t);
   const shot = await page.locator('#scene').screenshot();
   assert(shot.length > 40000, 'la escena tiene contenido');   // un lienzo vacío comprime a pocos KB
-  assert.equal(await page.locator('.hs').count(), 8);
-  assert.equal(await page.locator('#rooms button').count(), 8);
+  assert.equal(await page.locator('.hs').count(), 9);              // 8 espacios del plano + balcón propuesto
+  assert.equal(await page.locator('#rooms button').count(), 9);
+  assert.equal(await page.locator('.hs.prop').count(), 1);
   const stats = await page.evaluate(() => APTO_API.stats);
   assert(stats.verificados >= 12 && stats.ilustrativos >= 10);
   assert(stats.materiales.includes('muro') && stats.materiales.includes('piso_madera'));
@@ -104,6 +105,7 @@ test('caminar: altura de ojos, colisión con muros y paso por los vanos reales',
   await page.evaluate(() => APTO_API.move(-3, 0));          // hacia el muro medianero
   s = await page.evaluate(() => APTO_API.state);
   assert(s.plan.x >= 0.15 + 0.22 - 1e-3, `se detiene en el muro (${s.plan.x})`);
+  await page.evaluate(() => APTO_API.setBalcony(false));   // sin la propuesta, la fachada sur es un límite
   await page.evaluate(() => APTO_API.move(0, -3));          // hacia la fachada sur
   s = await page.evaluate(() => APTO_API.state);
   assert(s.plan.y >= 0.15 + 0.22 - 1e-3);
@@ -129,7 +131,8 @@ test('el recorrido cinematográfico atraviesa los espacios por sus vanos', async
   const page = await open(t);
   await page.locator('[data-mode="tour"]').click();
   const seen = [];
-  for (const time of [7, 16, 21, 29, 34, 42, 47.5]) {
+  // con el balcón propuesto (activo por defecto) la sala abre una parada de 9 s y el resto se desplaza 8,5 s
+  for (const time of [7, 16, 22, 29.5, 37.5, 42.5, 50.5, 56]) {
     await page.evaluate(v => APTO_API.tourSeek(v), time);
     await frames(page);
     const s = await page.evaluate(() => APTO_API.state);
@@ -138,9 +141,9 @@ test('el recorrido cinematográfico atraviesa los espacios por sus vanos', async
     assert(free);
     seen.push(s.room);
   }
-  for (const id of ['social', 'circulacion', 'alcoba_2', 'alcoba_3', 'alcoba_principal', 'bano_principal']) assert(seen.includes(id), `visita ${id}`);
+  for (const id of ['social', 'balcon', 'circulacion', 'alcoba_2', 'alcoba_3', 'alcoba_principal', 'bano_principal']) assert(seen.includes(id), `visita ${id}`);
   assert.equal(await page.locator('#caption').evaluate(e => e.classList.contains('on')), true);
-  await page.evaluate(() => APTO_API.tourSeek(55.9));
+  await page.evaluate(() => APTO_API.tourSeek(APTO_API.state.tourLen - 0.1));
   await page.waitForFunction(() => APTO_API.state.mode === 'orbit', null, { timeout: 5000 });
 });
 
@@ -154,6 +157,8 @@ test('acabados en tiempo real y capa de arquitectura verificada', async t => {
   assert.equal(await page.evaluate(() => APTO_API.visible('MOB_Sofa')), true);
   await page.locator('#layerVerified').check();
   assert.equal(await page.evaluate(() => APTO_API.visible('MOB_Sofa')), false);
+  assert.equal(await page.evaluate(() => APTO_API.visible('PROP_Balcon_losa')), false, 'la propuesta no es arquitectura verificada');
+  assert.equal(await page.locator('#layerBalcony').isDisabled(), true);
   assert.equal(await page.evaluate(() => APTO_API.visible('ILU_Ventaneria')), false);
   assert.equal(await page.evaluate(() => APTO_API.visible('ARQ_Muros')), true);
   assert.equal(await page.evaluate(() => APTO_API.visible('APA_Cocina')), true);
@@ -181,5 +186,52 @@ for (const [width, height] of [[390, 844], [320, 568], [844, 390], [768, 1024]])
 
 test('se abre también directamente desde el archivo (sin servidor)', async t => {
   const page = await open(t, 1280, 800, 'file://' + path.join(dir, 'index.html'));
-  assert.equal(await page.locator('.hs').count(), 8);
+  assert.equal(await page.locator('.hs').count(), 9);
+});
+
+// ------------------------------------------------------------------ propuesta de balcón (no figura en el DWG)
+const prop = JSON.parse(fs.readFileSync(path.join(dir, 'data/propuesta-balcon.json'), 'utf8'));
+
+test('el balcón propuesto mide 4,01 m², es exterior y no altera la geometría verificada', () => {
+  assert.equal(prop.verificado, false); assert.equal(prop.estado, 'propuesta');
+  assert.equal(+(prop.ancho_util * prop.fondo_util).toFixed(2), prop.area_util_m2);
+  assert(prop.area_util_m2 >= 3.9 && prop.area_util_m2 <= 4.1);
+  const [x0, y0, x1, y1] = prop.rect_util;
+  assert(y1 <= 0 && y0 < 0, 'en voladizo, fuera de la envolvente');
+  const sala = geo.ventanas.find(w => w.ancho === 2.475);
+  assert.equal(x0, sala.x0); assert.equal(x1, sala.x1); assert.equal(prop.acceso.vano.join(), [sala.x0, sala.y0, sala.x1, sala.y1].join());
+  assert.equal(geo.espacios.find(r => r.id === 'social').area_neta_m2, 18.07, 'la sala no cambia');
+  assert(!geo.espacios.some(r => r.id === 'balcon'), 'el balcón no entra en la geometría verificada');
+  const buf = fs.readFileSync(path.join(dir, 'modelo/apto-104.glb'));
+  const json = JSON.parse(buf.subarray(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
+  for (const n of json.nodes.filter(n => /^PROP_/.test(n.name))) assert.equal(n.extras.verificado, false, n.name);
+  assert.equal(json.nodes.filter(n => /^PROP_/.test(n.name)).length, 3);
+});
+
+test('se sale al balcón por la puerta-ventana y la propuesta se puede desactivar', async t => {
+  const page = await open(t);
+  assert.equal(await page.locator('#chipProp').isVisible(), true);
+  await page.evaluate(() => APTO_API.setMode('walk')); await settle(page);
+  await page.locator('#panelToggle').click();                   // dentro del apartamento las opciones van plegadas
+  await page.locator('#rooms button[data-room="balcon"]').click();
+  await settle(page); await frames(page);
+  let s = await page.evaluate(() => APTO_API.state);
+  assert.equal(s.room, 'balcon'); assert(s.plan.y < 0, 'la cámara está en el balcón');
+  const f = await page.evaluate(() => ({
+    paso: APTO_API.free(0.75, 0.07), hojas: APTO_API.free(2.0, 0.07), balcon: APTO_API.free(0.6, -0.6),
+    baranda: APTO_API.free(0.6, -1.55), afuera: APTO_API.free(0.6, -2.5), mesa: APTO_API.free(1.85, -0.85),
+  }));
+  assert.deepEqual(f, { paso: true, hojas: false, balcon: true, baranda: false, afuera: false, mesa: false });
+  assert.equal(await page.evaluate(() => APTO_API.visible('ILU_Ventana_sala')), false);
+  // sin la propuesta vuelve la ventana original y el balcón desaparece
+  await page.locator('#layerBalcony').uncheck();
+  s = await page.evaluate(() => APTO_API.state);
+  assert.equal(s.balcony, false); assert.notEqual(s.room, 'balcon');
+  assert.equal(await page.evaluate(() => APTO_API.free(0.75, 0.07)), false);
+  assert.equal(await page.evaluate(() => APTO_API.visible('PROP_Balcon_losa')), false);
+  assert.equal(await page.evaluate(() => APTO_API.visible('ILU_Ventana_sala')), true);
+  assert.equal(await page.evaluate(() => APTO_API.visible('ILU_Antepecho_sala')), true);
+  assert.equal(await page.locator('#rooms button[data-room="balcon"]').isVisible(), false);
+  assert.equal(await page.locator('#chipProp').isVisible(), false);
+  assert.equal(s.tourLen, 56, 'el recorrido vuelve a su duración original');
 });

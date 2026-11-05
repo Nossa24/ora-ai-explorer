@@ -12,6 +12,8 @@ La planta se construye a partir del DWG arquitectónico entregado.
 - **Espacios:** un punto interactivo por espacio, y la misma lista con sus áreas netas.
 - **Acabados en vivo:** piso (roble, porcelanato, microcemento) y color de muros.
 - **Capas:** mobiliario, cotas del plano y «solo arquitectura verificada».
+- **Propuesta:** balcón de 4,01 m² en la fachada de la sala. No figura en los DWG. Se puede activar
+  o desactivar, y está documentado en [MEDIDAS.md](MEDIDAS.md#propuesta-de-diseño-balcón-de-401-m²-no-figura-en-los-planos).
 
 ## Verificado frente a ilustrativo
 
@@ -29,7 +31,7 @@ La relación completa de medidas está en [MEDIDAS.md](MEDIDAS.md).
 dwg2dxf -y -o planos.dxf PLANO_ARQUITECTONICOS_TORRES_PINARES_ARTICA_HOME.dwg   # LibreDWG
 python3 tools/extraer_geometria.py planos.dxf "" data/geometria-104.json          # requiere ezdxf
 python3 tools/plano_validacion.py data/geometria-104.json plano-validacion-104.png
-python3 tools/generar_glb.py data/geometria-104.json modelo/apto-104.glb
+python3 tools/generar_glb.py data/geometria-104.json modelo/apto-104.glb data/propuesta-balcon.json
 npm i --no-save three@0.180.0 && node tools/build.mjs                            # requiere esbuild
 ```
 

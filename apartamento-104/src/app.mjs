@@ -8,6 +8,9 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const DATA = window.APTO104;
 const geo = DATA.geo;
+// Propuesta de balcón: NO proviene del DWG; se muestra siempre rotulada como propuesta.
+const PROP = DATA.propuesta || null;
+let balcony = !!PROP;
 const [, , W, H] = geo.envolvente_exterior;
 const EYE = 1.6;
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -43,7 +46,7 @@ scene.environmentIntensity = 0.45;
 function skyTexture() {
   const c = document.createElement('canvas'); c.width = 4; c.height = 256;
   const x = c.getContext('2d'); const gr = x.createLinearGradient(0, 0, 0, 256);
-  gr.addColorStop(0, '#9fb4c8'); gr.addColorStop(.55, '#e9dcc3'); gr.addColorStop(.62, '#7d8a6f'); gr.addColorStop(1, '#3d4636');
+  gr.addColorStop(0, '#8fa9c2'); gr.addColorStop(.45, '#d9e2e6'); gr.addColorStop(.5, '#efe4cf'); gr.addColorStop(.53, '#b8bea5'); gr.addColorStop(1, '#7f8a6c');
   x.fillStyle = gr; x.fillRect(0, 0, 4, 256);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
@@ -121,7 +124,7 @@ const ceramicTex = canvasTex((x, n) => {
 
 // ------------------------------------------------------------------ modelo
 const mats = {};
-const groups = { arquitectura: [], aparatos: [], ilustrativo: [], mobiliario: [], cielo: [] };
+const groups = { arquitectura: [], aparatos: [], ilustrativo: [], mobiliario: [], cielo: [], propuesta: [], propuesta_mobiliario: [], sin_balcon: [] };
 let model = null;
 const stats = { verificados: 0, ilustrativos: 0, nodos: [] };
 
@@ -149,7 +152,7 @@ new GLTFLoader().parse(base64ToBuffer(DATA.glb), '', gltf => {
   mats.piso_ceramica && Object.assign(mats.piso_ceramica, { map: ceramicTex, color: new THREE.Color('#ffffff') });
   setFloor('roble'); setWall('marfil');
   groups.cielo.forEach(o => { o.visible = false; });
-  buildHotspots(); buildDims(); resetOrbit(true);
+  buildHotspots(); buildDims(); buildTour(); applyLayers(); resetOrbit(true);
   document.body.classList.remove('is-loading');
   ready = true;
 }, error => { console.error(error); $('#error').hidden = false; document.body.classList.remove('is-loading'); });
@@ -185,28 +188,33 @@ const VIEWS = {
   alcoba_3: { pos: [5.95, 3.35], look: [7.5, 1.0], orbit: [6.7, 1.9] },
   alcoba_principal: { pos: [5.8, 4.2], look: [7.6, 6.9], orbit: [6.7, 5.7] },
   bano_principal: { pos: [5.0, 5.3], look: [4.55, 6.7], orbit: [4.7, 6.0] },
+  balcon: { pos: [0.6, -0.25], look: [2.3, -1.3], orbit: [1.4, -0.8] },
 };
-const roomById = Object.fromEntries(geo.espacios.map(r => [r.id, r]));
+const BALCON = PROP && { id: 'balcon', nombre: 'Balcón', area_neta_m2: PROP.area_util_m2, piso_rectangulos: [PROP.rect_util], propuesta: true };
+const allRooms = () => (BALCON ? [...geo.espacios, BALCON] : geo.espacios);
+const roomById = Object.fromEntries(allRooms().map(r => [r.id, r]));
 const fmt = n => n.toFixed(2).replace('.', ',');
+const fmtDim = n => (Math.abs(n * 100 - Math.round(n * 100)) > 1e-6 && Math.abs(n * 1000 - Math.round(n * 1000)) < 1e-6 ? n.toFixed(3) : n.toFixed(2)).replace('.', ',');   // 2,475 se muestra tal como en el plano
 const roomName = r => (r.id === 'alcoba_2' ? 'Alcoba 2' : r.id === 'alcoba_3' ? 'Alcoba 3' : r.nombre);
 function roomAt(p) {
-  for (const r of geo.espacios) for (const [x0, y0, x1, y1] of r.piso_rectangulos) if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1) return r;
+  for (const r of allRooms()) if (r.propuesta && !balcony) continue; else for (const [x0, y0, x1, y1] of r.piso_rectangulos) if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1) return r;
   return null;
 }
 
 const hotspots = [];
 function buildHotspots() {
   const list = $('#rooms');
-  for (const r of geo.espacios) {
+  for (const r of allRooms()) {
     const v = VIEWS[r.id];
-    const hs = document.createElement('button'); hs.type = 'button'; hs.className = 'hs'; hs.dataset.room = r.id;
-    hs.setAttribute('aria-label', `${roomName(r)}, ${fmt(r.area_neta_m2)} metros cuadrados`);
-    hs.innerHTML = `<i></i><span>${roomName(r)} · ${fmt(r.area_neta_m2)} m²</span>`;
+    const hs = document.createElement('button'); hs.type = 'button'; hs.className = 'hs' + (r.propuesta ? ' prop' : ''); hs.dataset.room = r.id;
+    hs.setAttribute('aria-label', `${roomName(r)}${r.propuesta ? ' propuesto' : ''}, ${fmt(r.area_neta_m2)} metros cuadrados`);
+    hs.innerHTML = `<i></i><span>${roomName(r)}${r.propuesta ? ' · propuesta' : ''} · ${fmt(r.area_neta_m2)} m²</span>`;
     hs.addEventListener('click', e => { e.stopPropagation(); goRoom(r.id); });
     $('#hotspots').append(hs);
     hotspots.push({ el: hs, room: r, anchor: toScene(v.orbit[0], v.orbit[1], 1.05) });
     const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.dataset.room = r.id;
-    b.innerHTML = `${roomName(r)}<em>${fmt(r.area_neta_m2)} m²</em>`; b.addEventListener('click', () => goRoom(r.id));
+    if (r.propuesta) { li.className = 'prop'; b.title = 'Propuesta: no figura en los planos DWG'; }
+    b.innerHTML = `${roomName(r)}${r.propuesta ? ' <small>propuesta</small>' : ''}<em>${fmt(r.area_neta_m2)} m²</em>`; b.addEventListener('click', () => goRoom(r.id));
     li.append(b); list.append(li);
   }
 }
@@ -222,7 +230,7 @@ function buildDims() {
     if (seen.has(key)) return; seen.add(key);
     const pa = toScene(a.x, a.y, 2.46), pb = toScene(b.x, b.y, 2.46);
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([pa, pb]), mat); line.renderOrder = 5; dimGroup.add(line);
-    const el = document.createElement('span'); el.className = 'dim'; el.textContent = fmt(value); el.hidden = true; $('#labels').append(el);
+    const el = document.createElement('span'); el.className = 'dim'; el.textContent = fmtDim(value); el.hidden = true; $('#labels').append(el);
     dimLabels.push({ el, pos: pa.clone().add(pb).multiplyScalar(.5) });
   };
   for (const d of geo.cotas) {
@@ -234,19 +242,43 @@ function buildDims() {
   }
   add({ x: 0, y: -0.3 }, { x: W, y: -0.3 }, W);
   add({ x: W + 0.3, y: 0 }, { x: W + 0.3, y: H }, H);
+  if (PROP) {   // medidas de la propuesta, rotuladas aparte
+    const [x0, y0, x1, y1] = PROP.rect_util, n = dimLabels.length;
+    add({ x: x0, y: y0 - 0.25 }, { x: x1, y: y0 - 0.25 }, PROP.ancho_util);
+    add({ x: x1 + 0.25, y: y0 }, { x: x1 + 0.25, y: y1 }, PROP.fondo_util);
+    for (const d of dimLabels.slice(n)) { d.prop = true; d.el.classList.add('prop'); }
+    propDims.push(...dimGroup.children.slice(-2));
+  }
 }
+const propDims = [];
 
 // ------------------------------------------------------------------ capas
 function applyLayers() {
   const verifiedOnly = $('#layerVerified').checked;
   const furniture = $('#layerFurniture').checked && !verifiedOnly;
+  const bal = balcony && !verifiedOnly;
   groups.mobiliario.forEach(o => { o.visible = furniture; });
   groups.ilustrativo.forEach(o => { o.visible = !verifiedOnly; });
   for (const o of groups.arquitectura) if (o.userData.verificado === false) o.visible = !verifiedOnly;
+  groups.propuesta.forEach(o => { o.visible = bal; });
+  groups.propuesta_mobiliario.forEach(o => { o.visible = bal && furniture; });
+  groups.sin_balcon.forEach(o => { o.visible = !bal && !verifiedOnly; });
   $('#layerFurniture').disabled = verifiedOnly;
+  const lb = $('#layerBalcony'); if (lb) { lb.disabled = verifiedOnly; lb.checked = balcony; }
+  document.body.classList.toggle('has-balcony', bal);
+  document.querySelectorAll('[data-room="balcon"]').forEach(e => { e.closest('li') ? (e.closest('li').hidden = !bal) : e.classList.toggle('gone', !bal); });
   dimGroup.visible = $('#layerDims').checked && mode === 'orbit';
+  propDims.forEach(l => { l.visible = bal; });
 }
 ['#layerFurniture', '#layerDims', '#layerVerified'].forEach(s => $(s).addEventListener('change', applyLayers));
+function setBalcony(on) {
+  if (!PROP) return;
+  balcony = !!on;
+  if (!balcony && current === 'balcon') { markRoom('social'); if (mode === 'walk') goRoom('social'); }
+  if (mode === 'tour') setMode('orbit');
+  buildTour(); applyLayers();
+}
+$('#layerBalcony')?.addEventListener('change', e => setBalcony(e.target.checked));
 
 // ------------------------------------------------------------------ cámara: vuelos suaves
 let flight = null;
@@ -277,13 +309,14 @@ function markRoom(id) {
 }
 function caption(r) {
   if (!r) { $('#caption').classList.remove('on'); return; }
-  $('#captionK').textContent = `Área neta ${fmt(r.area_neta_m2)} m²`;
+  $('#captionK').textContent = r.propuesta ? `Propuesta · ${fmt(r.area_neta_m2)} m² · no figura en los planos` : `Área neta ${fmt(r.area_neta_m2)} m²`;
   $('#captionT').textContent = roomName(r);
   $('#caption').classList.add('on');
 }
 
 function goRoom(id) {
   const r = roomById[id]; const v = VIEWS[id]; if (!r || !ready) return;
+  if (r.propuesta && !(balcony && !$('#layerVerified').checked)) return;
   if (mode === 'tour') setMode('orbit');
   markRoom(id); caption(r); clearTimeout(captionTimer); captionTimer = setTimeout(() => caption(null), 2600);
   if (mode === 'walk') {
@@ -298,16 +331,27 @@ function goRoom(id) {
 let captionTimer = null;
 
 // ------------------------------------------------------------------ caminar: colisiones con muros, ventanas y aparatos del DWG
-const obstacles = [
+const SALA_V = geo.ventanas.reduce((a, b) => (b.ancho > a.ancho ? b : a));
+const baseObstacles = [
   ...geo.muros_rectangulos,
-  ...geo.ventanas.map(w => [w.x0, w.y0, w.x1, w.y1]),
+  ...geo.ventanas.filter(w => w !== SALA_V).map(w => [w.x0, w.y0, w.x1, w.y1]),
   ...geo.aparatos.filter(f => f.rect && f.tipo !== 'ducha').map(f => f.rect),
   ...geo.puertas.filter(d => d.id === 'entrada').map(d => d.rect),   // no se sale al corredor
 ];
 const RADIUS = 0.22;
+function obstaclesNow() {
+  if (!(balcony && PROP && !$('#layerVerified').checked)) return [...baseObstacles, [SALA_V.x0, SALA_V.y0, SALA_V.x1, SALA_V.y1]];
+  const [h0, h1] = PROP.acceso.hojas_cerradas;
+  return [...baseObstacles, [h0, SALA_V.y0, h1, SALA_V.y1], [1.20, -1.10, 2.55, -0.60]];   // hojas cerradas y mesa del balcón
+}
+function onBalcony(x, y) {
+  if (!(balcony && PROP && !$('#layerVerified').checked)) return false;
+  const [x0, y0, x1] = PROP.rect_util;
+  return x >= x0 + RADIUS && x <= x1 - RADIUS && y >= y0 + RADIUS && y < RADIUS + 0.01;
+}
 function free(x, y) {
-  if (x < RADIUS || x > W - RADIUS || y < RADIUS || y > H - RADIUS) return false;
-  return !obstacles.some(([x0, y0, x1, y1]) => x > Math.min(x0, x1) - RADIUS && x < Math.max(x0, x1) + RADIUS && y > Math.min(y0, y1) - RADIUS && y < Math.max(y0, y1) + RADIUS);
+  if (!onBalcony(x, y) && (x < RADIUS || x > W - RADIUS || y < RADIUS || y > H - RADIUS)) return false;
+  return !obstaclesNow().some(([x0, y0, x1, y1]) => x > Math.min(x0, x1) - RADIUS && x < Math.max(x0, x1) + RADIUS && y > Math.min(y0, y1) - RADIUS && y < Math.max(y0, y1) + RADIUS);
 }
 function moveBy(dx, dy) {
   const p = toPlan(camera.position);
@@ -355,7 +399,7 @@ canvas.addEventListener('pointerup', e => {
   if (!wasTap || mode !== 'walk') return;
   const r = canvas.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
-  const floors = []; model.traverse(o => { if (o.isMesh && /^ARQ_Piso/.test(o.name)) floors.push(o); });
+  const floors = []; model.traverse(o => { if (o.isMesh && (/^ARQ_Piso/.test(o.name) || (o.name === 'PROP_Balcon_losa' && o.parent?.visible !== false && o.visible))) floors.push(o); });
   const hit = ray.intersectObjects(floors, false)[0];
   if (hit) walkTo(toPlan(hit.point));
 });
@@ -363,7 +407,7 @@ let walkTarget = null;
 function walkTo(p) { walkTarget = p; }
 
 // ------------------------------------------------------------------ recorrido cinematográfico (trayectoria por vanos reales)
-const TOUR = [
+const TOUR_BASE = [
   { p: [9.6, 9.0, 11.5], l: [4.05, 0.4, 3.8], t: 0, room: null },
   { p: [0.65, 3.2, 9.3], l: [0.65, 1.2, 6.8], t: 3.5, room: null },
   { p: [0.65, 1.6, 7.0], l: [1.3, 1.4, 4.5], t: 6.5, room: 'social' },          // entra por la puerta principal
@@ -383,10 +427,31 @@ const TOUR = [
   { p: [5.2, 1.6, 5.3], l: [4.5, 1.1, 6.6], t: 47, room: 'bano_principal' },
   { p: [6.4, 2.0, 4.5], l: [5.0, 1.2, 3.0], t: 50.5, room: 'alcoba_principal' },
   { p: [12.0, 9.5, -2.0], l: [4.05, 0.4, 3.8], t: 56, room: null },
-].map(k => ({ ...k, P: toScene(k.p[0], k.p[2], k.p[1]), L: toScene(k.l[0], k.l[2], k.l[1]) }));
-const tourCurve = new THREE.CatmullRomCurve3(TOUR.map(k => k.P), false, 'centripetal');
-const lookCurve = new THREE.CatmullRomCurve3(TOUR.map(k => k.L), false, 'centripetal');
-const TOUR_LEN = TOUR[TOUR.length - 1].t;
+];
+// con el balcón propuesto, el recorrido sale por la puerta-ventana de la sala y vuelve a entrar
+const TOUR_BALCON = [
+  { p: [0.9, 1.6, 0.6], l: [1.3, 1.1, -1.6], dt: 2.5, room: 'social' },
+  { p: [1.0, 1.6, -0.75], l: [2.5, 1.0, -1.6], dt: 3, room: 'balcon' },
+  { p: [1.05, 1.6, 0.9], l: [2.0, 1.3, 3.3], dt: 3.5, room: 'social' },
+];
+let TOUR = [], tourCurve, lookCurve, TOUR_LEN = 0;
+function buildTour() {
+  const withBal = balcony && PROP && !$('#layerVerified').checked;
+  const list = []; let shift = 0;
+  for (const k of TOUR_BASE) {
+    list.push({ ...k, t: k.t + shift });
+    if (withBal && k.t === 16.5) {
+      let t = k.t;
+      for (const b of TOUR_BALCON) { t += b.dt; list.push({ ...b, t }); }
+      // la parada siguiente (circulación) llega 3 s después de volver a entrar a la sala
+      shift = (t - k.t) + 3 - (TOUR_BASE[TOUR_BASE.indexOf(k) + 1].t - k.t);
+    }
+  }
+  TOUR = list.map(k => ({ ...k, P: toScene(k.p[0], k.p[2], k.p[1]), L: toScene(k.l[0], k.l[2], k.l[1]) }));
+  tourCurve = new THREE.CatmullRomCurve3(TOUR.map(k => k.P), false, 'centripetal');
+  lookCurve = new THREE.CatmullRomCurve3(TOUR.map(k => k.L), false, 'centripetal');
+  TOUR_LEN = TOUR[TOUR.length - 1].t;
+}
 let tourT = 0, tourRoom = undefined;
 function tourParam(t) {   // tiempo → parámetro de curva (los nudos están equiespaciados en u)
   const n = TOUR.length - 1;
@@ -419,7 +484,7 @@ function setMode(next) {
   $('#hintTxt').textContent = HINTS[next];
   const inside = next !== 'orbit';
   groups.cielo.forEach(o => { o.visible = inside && next === 'walk'; });
-  interiorLights.visible = inside; sky.visible = inside;
+  interiorLights.visible = inside; sky.visible = inside; ground.visible = !inside;
   scene.background = inside ? null : navy;
   canvas.style.cursor = next === 'walk' ? 'crosshair' : '';
   camera.fov = next === 'orbit' ? 42 : (camera.aspect < 0.9 ? 78 : 64); camera.updateProjectionMatrix();
@@ -538,10 +603,10 @@ window.APTO_API = {
   get state() {
     const p = toPlan(camera.position);
     const q = toPlan(controls.target);
-    return { mode, room: current, plan: { x: +p.x.toFixed(3), y: +p.y.toFixed(3) }, target: { x: +q.x.toFixed(3), y: +q.y.toFixed(3) }, height: +camera.position.y.toFixed(3), tour: +tourT.toFixed(2), floor: floorId, wall: wallId, flying: !!flight, frame };
+    return { mode, balcony: balcony && !$('#layerVerified').checked, tourLen: TOUR_LEN, room: current, plan: { x: +p.x.toFixed(3), y: +p.y.toFixed(3) }, target: { x: +q.x.toFixed(3), y: +q.y.toFixed(3) }, height: +camera.position.y.toFixed(3), tour: +tourT.toFixed(2), floor: floorId, wall: wallId, flying: !!flight, frame };
   },
   get stats() { return { ...stats, materiales: Object.keys(mats) }; },
-  setMode, goRoom, setFloor, setWall, walkTo,
+  setMode, goRoom, setFloor, setWall, walkTo, setBalcony,
   move: (dx, dy) => moveBy(dx, dy), free,
   wallColor: () => '#' + (mats.muro?.color.getHexString() || ''),
   floorMap: () => mats.piso_madera?.map === floorTex[floorId],

@@ -14,7 +14,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { setTextureSize, anisotropy, cacheSize } from '../../apartamento-104/src/texturas.mjs';
 import { RECETAS, OPCIONES, PRESETS, FIJOS, aplicar, opcion, ambiente as ambienteBase } from '../../apartamento-104/src/acabados.mjs';
-import { crearEntorno, NIVEL_TERRENO } from '../../apartamento-104/src/entorno.mjs';
+import { crearEntorno, NIVEL_TERRENO } from './entorno102.mjs';
 
 // ------------------------------------------------------------------ propuesta monocromática (solo en el 102)
 // Paleta en blanco, grises y negro mate, pedida para la propuesta con barra. Ilustrativa, no contractual.
@@ -82,8 +82,8 @@ try {
 const pixelRatio = () => Math.min(devicePixelRatio, quality === 'alta' ? 2 : (innerWidth < 700 ? 1.5 : 1.6));
 renderer.setPixelRatio(pixelRatio());
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.95;
+renderer.toneMapping = THREE.NeutralToneMapping;   // Khronos PBR Neutral: colores de material fieles, como una foto de arquitectura
+renderer.toneMappingExposure = 0.92;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = false;   // una actualización por cuadro (no por cada reflejo)
@@ -109,7 +109,7 @@ const hemi = new THREE.HemisphereLight('#f6efe2', '#2a2621', 0.85); scene.add(he
 const sun = new THREE.DirectionalLight('#fff0d8', 2.6);
 sun.position.copy(SUN_DIR).multiplyScalar(14); sun.castShadow = true;
 sun.shadow.mapSize.set(quality === 'alta' ? 2048 : 1024, quality === 'alta' ? 2048 : 1024);
-Object.assign(sun.shadow.camera, { left: -7.5, right: 7.5, top: 7.5, bottom: -7.5, near: 2, far: 32 });
+Object.assign(sun.shadow.camera, { left: -6.6, right: 6.6, top: 6.6, bottom: -6.6, near: 2, far: 32 });
 sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.025; sun.shadow.radius = 3;
 scene.add(sun); scene.add(sun.target);
 
@@ -118,7 +118,7 @@ scene.add(sun); scene.add(sun.target);
 // cercanas al visitante, con transición suave de intensidad.
 const LIGHTS = {   // [x, y, intensidad] — posiciones bajo las luminarias del GLB
   social: [[1.37, 1.2, 2.2], [1.15, 3.75, 1.6], [1.6, 6.3, 1.6]], hall: [[3.9, 4.25, 0.9]], habitacion_2: [[4.0, 1.9, 1.5]], principal: [[6.5, 2.4, 1.7]],
-  bano_principal: [[5.75, 6.0, 1.0]], vestier: [[7.1, 6.0, 0.7]], bano_social: [[4.2, 5.8, 0.8]], deposito: [[3.1, 5.3, 0.5]],
+  bano_principal: [[5.75, 6.0, 1.0]], vestier: [[7.1, 6.0, 0.7]], bano_social: [[4.2, 5.8, 0.8]], ropas: [[3.1, 5.3, 0.5]],
 };
 const SRC_P = Object.values(LIGHTS).flat().map(([x, y, k]) => ({ pos: toScene(x, y, 2.25), k }));
 const SALA_V = geo.ventanas.reduce((a, b) => (b.ancho > a.ancho ? b : a));
@@ -204,8 +204,33 @@ function base64ToBuffer(b64) {
   return out.buffer;
 }
 
-new GLTFLoader().parse(base64ToBuffer(DATA.glb), '', gltf => {
+// Muebles de terceros (Khronos glTF-Sample-Assets; créditos en modelo/muebles/CREDITOS.md). El GLB del
+// apartamento solo trae su posición (nodos con userData.modelo); se cargan antes y se clonan.
+const MUEBLES = {};
+const TINTE = {   // tela del sofá, tela de las butacas y madera de las patas, por propuesta de acabados
+  monocromatica: { sofa: '#c9c8c5', butaca: '#3b3b3e', madera: '#1f1f21' },
+  calida: { sofa: '#d3c7b5', butaca: '#a8603e', madera: '#6b4f38' },
+  sofisticada: { sofa: '#6a6b6f', butaca: '#8e5b36', madera: '#2f2620' },
+  luminosa: { sofa: '#ece8e0', butaca: '#aab69f', madera: '#cdb999' },
+};
+const mueblesMats = [];
+function tintMuebles(id) {
+  const t = TINTE[id] || TINTE.monocromatica;
+  for (const m of mueblesMats) {
+    const c = /tela_sofa/.test(m.name) ? t.sofa : /tela_butaca/.test(m.name) ? t.butaca : /madera/.test(m.name) ? t.madera : null;
+    if (!c) continue;
+    m.color.set(c); if (m.sheenColor) m.sheenColor.set(c).lerp(new THREE.Color('#ffffff'), 0.35);
+  }
+}
+const loadMuebles = Promise.all(Object.entries(DATA.muebles || {}).map(([k, b64]) => new GLTFLoader().parseAsync(base64ToBuffer(b64), '').then(g => { MUEBLES[k] = g.scene; })));
+
+loadMuebles.catch(e => console.warn('muebles', e)).then(() => new GLTFLoader().parse(base64ToBuffer(DATA.glb), '', gltf => {
   model = gltf.scene; scene.add(model);
+  const conModelo = []; model.traverse(o => { if (o.userData?.modelo && MUEBLES[o.userData.modelo]) conModelo.push(o); });
+  for (const o of conModelo) {
+    const c = MUEBLES[o.userData.modelo].clone(true); c.scale.setScalar(o.userData.escala || 1); o.add(c);
+    c.traverse(q => { if (q.isMesh) { q.castShadow = q.receiveShadow = true; q.userData.mueble = true; if (!mueblesMats.includes(q.material)) mueblesMats.push(q.material); } });
+  }
   model.traverse(o => {
     if (o.userData && 'verificado' in o.userData) {
       (groups[o.userData.grupo] || groups.arquitectura).push(o);
@@ -223,9 +248,10 @@ new GLTFLoader().parse(base64ToBuffer(DATA.glb), '', gltf => {
       if (/^vidrio/.test(m.name)) Object.assign(m, { roughness: 0.03, metalness: 0, envMapIntensity: 1.6 });
       if (m.name === 'luz_calida') { m.emissive.set('#ffd9a8'); m.emissiveIntensity = 2.2; m.toneMapped = true; }
       if (m.name === 'pantalla_lampara') m.emissiveIntensity = 0.8;
-      mats[m.name] = m;
+      if (!o.userData.mueble) mats[m.name] = m;
     }
   });
+  physicalize();
   buildMirrors(); updateMirrors();
   aplicar(mats, FIJOS);
   setPreset('monocromatica');
@@ -235,7 +261,22 @@ new GLTFLoader().parse(base64ToBuffer(DATA.glb), '', gltf => {
   setupComposer(); resize();
   document.body.classList.remove('is-loading');
   ready = true;
-}, error => { console.error(error); $('#error').hidden = false; document.body.classList.remove('is-loading'); });
+}, error => { console.error(error); $('#error').hidden = false; document.body.classList.remove('is-loading'); }));
+
+// materiales físicos: telas con brillo de terciopelo (sheen) y piedras pulidas con capa transparente (clearcoat)
+const SHEEN = /^(tela_|textil_tapete|toalla)/, CLEAR = /^(meson|meson_bano|salpicadero|alfeizar|vidrio_negro|electro_blanco|ceramica_blanca)$/;
+function physicalize() {
+  const swap = {};
+  for (const [name, m] of Object.entries(mats)) {
+    if (!SHEEN.test(name) && !CLEAR.test(name)) continue;
+    const p = new THREE.MeshPhysicalMaterial();
+    THREE.MeshStandardMaterial.prototype.copy.call(p, m); p.name = name; p.userData = { ...m.userData };
+    if (SHEEN.test(name)) Object.assign(p, { sheen: 1, sheenRoughness: 0.75, roughness: Math.max(0.85, m.roughness) }), p.sheenColor.set('#8a8a8a');
+    else Object.assign(p, { clearcoat: name === 'ceramica_blanca' ? 0.6 : 0.35, clearcoatRoughness: 0.08 });
+    swap[name] = p; mats[name] = p;
+  }
+  model.traverse(o => { if (o.isMesh && !o.userData.mueble && swap[o.material.name]) o.material = swap[o.material.name]; });
+}
 
 // espejos de los baños: reflejo plano real (Reflector) sobre la cara del espejo del GLB
 function buildMirrors() {
@@ -274,6 +315,7 @@ function setPreset(id) {
   const p = PRESETS.find(v => v.id === id); if (!p) return;
   fin.preset = id; fin.personalizado = false;
   if (!verifiedOnly()) aplicar(mats, ambiente(id));
+  tintMuebles(id);
   for (const t of ['piso', 'muros', 'cocina', 'bano']) setFinish(t, p[t], true);
   fin.personalizado = false; syncPresetUi();
 }
@@ -305,7 +347,7 @@ const VIEWS = {
   habitacion_2: { pos: [3.45, 3.2], look: [4.8, 0.5], orbit: [4.0, 1.9] },
   principal: { pos: [5.7, 4.2], look: [7.6, 2.4], orbit: [6.6, 2.4] },
   vestier: { pos: [7.2, 5.0], look: [7.3, 6.9], orbit: [7.3, 6.1] },
-  deposito: { pos: [3.1, 4.3], look: [3.0, 5.6], orbit: [3.1, 5.4] },
+  ropas: { pos: [3.1, 4.3], look: [3.0, 5.6], orbit: [3.1, 5.4] },
   bano_social: { pos: [4.2, 4.95], look: [4.3, 6.9], orbit: [4.2, 6.0] },
   bano_principal: { pos: [5.95, 5.1], look: [5.2, 6.9], orbit: [5.75, 6.0] },
   balcon: { pos: [2.1, -0.3], look: [0.6, -1.4], orbit: [1.4, -0.8] },
@@ -348,10 +390,10 @@ const POIS = [
   { id: 'acceso', p: [0.65, 7.42, 1.85], cat: 'verificado', t: 'Puerta de acceso · 1,00 m', d: 'Vano y posición del DWG (P2). La altura de 2,10 m es provisional; la hoja es ilustrativa.' },
   { id: 'cocina', p: [2.1, 6.9, 1.25], cat: 'propuesta', t: 'Cocina en U abierta', d: 'Propuesta: mesón norte con estufa y horno, nevera de columna y barra-península con lavaplatos. Sin comedor tradicional: la barra lo reemplaza.' },
   { id: 'barra', p: [0.9, 4.6, 1.1], cat: 'propuesta', t: 'Barra de 2 puestos · 1,45 m', d: 'Propuesta: península de 1,45 × 0,90 m con voladizo de 0,30 m para dos banquetas. Deja un eje libre de al menos 0,85 m entre la cocina, la sala y el balcón.' },
-  { id: 'ropas', p: [0.82, 5.9, 1.4], cat: 'propuesta', t: 'Ropas integrada a la cocina', d: 'Propuesta: columna de 0,65 × 1,05 m junto al acceso, con lavadora-secadora apilada y lavadero tras puertas corredizas. Pendiente de viabilidad técnica: desagüe hasta el ducto (≈3,0–3,5 m), secadora de condensación o bomba de calor con extracción mecánica, circuito dedicado y bandeja antigoteo.' },
-  { id: 'ductos', p: [3.83, 5.25, 2.05], cat: 'verificado', t: 'Ductos del DWG', d: 'Los dos ductos verticales del plano se conservan y sirven a los dos baños. La conexión de la zona de ropas hasta ellos está pendiente de validar.' },
-  { id: 'hall', p: [4.0, 4.24, 2.15], cat: 'propuesta', t: 'Hall de alcobas · 2,12 m²', d: 'Un solo hall reparte las dos habitaciones, el baño social y el depósito: menos pasillo y más área útil en los recintos.' },
-  { id: 'deposito', p: [3.1, 5.4, 1.6], cat: 'propuesta', t: 'Depósito · 1,11 m²', d: 'Propuesta: el antiguo cuarto de ropas queda como depósito o despensa con estantería, tras una puerta corrediza.' },
+  { id: 'ropas', p: [3.1, 5.25, 1.95], cat: 'propuesta', t: 'Ropas junto a los ductos · 1,11 m²', d: 'Propuesta: lavadora-secadora apilada, lavadero y almacenamiento en el antiguo cuarto, tras una puerta corrediza oculta en el muro. Desagüe y extracción al ducto D1, a unos 0,4 m; agua desde el baño social. Se descartó la columna junto al acceso: desagüe de ≈3,2 m, sin ventilación cercana y ruido en la zona social.' },
+  { id: 'ductos', p: [3.83, 5.25, 2.05], cat: 'verificado', t: 'Ductos del DWG', d: 'Los dos ductos verticales del plano se conservan. Los dos baños y la zona de ropas se agrupan junto a ellos.' },
+  { id: 'hall', p: [4.0, 4.24, 2.15], cat: 'propuesta', t: 'Hall de alcobas · 2,12 m²', d: 'Un solo hall reparte las dos habitaciones, el baño social y la zona de ropas: menos pasillo y más área útil en los recintos.' },
+  { id: 'ingreso', p: [1.0, 6.65, 1.9], cat: 'propuesta', t: 'Ingreso libre de 0,95 m', d: 'Entre la despensa de 0,40 m y el mesón de la cocina quedan 0,95 m frente a frente (1,00 m medido; lo limita la puerta de acceso).' },
   { id: 'habitacion_2', p: [4.0, 1.9, 1.2], cat: 'propuesta', t: 'Habitación 2 · 8,88 m²', d: 'Cama doble, armario de 1,40 m y escritorio bajo la ventana. La alcoba equivalente del plano original medía 2,50 × 2,52 m (6,30 m²).' },
   { id: 'principal', p: [6.6, 2.5, 1.3], cat: 'propuesta', t: 'Habitación principal · 11,39 m²', d: 'Suite con baño privado de 4,70 m² y vestier de 3,06 m², en el área que ocupaban el estudio y la alcoba del plano original.' },
   { id: 'bano_principal', p: [5.75, 6.9, 1.5], cat: 'propuesta', t: 'Baño principal · 4,70 m²', d: 'Propuesta: ducha de 1,78 m con mampara, doble lavamanos y sanitario suspendido.' },
@@ -645,8 +687,8 @@ function walkTo(p) { walkTarget = p; }
 
 // ------------------------------------------------------------------ recorrido cinematográfico en 12 capítulos
 // Puntos en planta [x, altura, y]; la trayectoria cruza solo vanos reales (prueba automática).
-const CHAPTERS = ['Vista general', 'Aproximación al acceso', 'Entrada, ropas y cocina', 'Sala y barra', 'Balcón', 'Hall de alcobas',
-  'Habitación 2', 'Baño social y depósito', 'Habitación principal', 'Baño principal y vestier', 'Regreso a la zona social', 'Vista final'];
+const CHAPTERS = ['Vista general', 'Aproximación al acceso', 'Entrada y cocina', 'Sala y barra', 'Balcón', 'Hall de alcobas',
+  'Habitación 2', 'Baño social y ropas', 'Habitación principal', 'Baño principal y vestier', 'Regreso a la zona social', 'Vista final'];
 const K = (c, t, p, l, room = null) => ({ c, t, p, l, room });
 const TOUR_A = [
   K(0, 0, [11.0, 10.5, -5.5], [4.0, 0, 3.8]),
@@ -654,7 +696,7 @@ const TOUR_A = [
   K(1, 10.5, [-2.6, 4.2, 11.4], [0.65, 1.5, 7.6]),
   K(1, 14, [0.65, 1.65, 10.0], [0.65, 1.5, 7.0]),
   K(2, 17, [0.65, 1.6, 7.85], [1.0, 1.4, 5.5]),
-  K(2, 20, [1.2, 1.6, 6.55], [0.2, 1.1, 5.9], 'social'),
+  K(2, 20, [1.0, 1.6, 6.6], [1.0, 1.1, 4.6], 'social'),
   K(2, 23, [1.85, 1.6, 6.0], [2.2, 1.2, 7.45], 'social'),
   K(3, 27, [2.25, 1.6, 4.9], [0.9, 0.95, 4.3], 'social'),
   K(3, 31, [2.12, 1.55, 3.2], [0.6, 1.0, 1.4], 'social'),
@@ -787,10 +829,10 @@ function setMode(next, opts = {}) {
   groups.cielo.forEach(o => { o.visible = inside && next === 'walk'; });
   interiorLights.visible = windowLights.visible = inside; ground.visible = !inside;
   canvas.style.cursor = next === 'walk' ? 'crosshair' : '';
-  fovTarget = next === 'orbit' ? 42 : (camera.aspect < 0.9 ? 78 : 66);
+  fovTarget = next === 'orbit' ? 42 : (camera.aspect < 0.9 ? 74 : 60);
   hemi.intensity = next === 'orbit' ? 0.85 : 0.32;
   scene.environmentIntensity = next === 'orbit' ? 0.45 : 0.28;
-  renderer.toneMappingExposure = next === 'orbit' ? 0.95 : 0.9;
+  renderer.toneMappingExposure = next === 'orbit' ? 0.92 : 0.86;
   // dentro del apartamento la arquitectura manda: la ficha de opciones se pliega
   if (next !== 'orbit' && !compact.matches) { body.hidden = true; toggle.setAttribute('aria-expanded', 'false'); }
   if (next === 'orbit' && !compact.matches) { body.hidden = false; }
@@ -984,5 +1026,21 @@ window.APTO_API = {
   tourSeek: t => { tourT = t; tourBlend = null; poke(10); },
   render: (n = 3) => poke(n),
   topView: () => { if (mode !== 'orbit') setMode('orbit'); flight = null; camera.position.set(0, 17 / Math.min(1, camera.aspect), 0.0001); controls.target.set(0, 0, 0); camera.lookAt(0, 0, 0); controls.update(); },
+  // distancia horizontal desde un punto de la planta hasta la primera superficie del modelo 3D (para medir pasos)
+  rayPlan: (x, y, h, dx, dy) => {
+    const o = toScene(x, y, h), d = toScene(x + dx, y + dy, h).sub(o).normalize();
+    const hits = new THREE.Raycaster(o, d, 0, 20).intersectObject(model, true).filter(i => shown(i.object) && !/Cielo|Luminarias/.test(i.object.name + (i.object.parent?.name || '')));
+    return hits.length ? +hits[0].distance.toFixed(3) : null;
+  },
+  modelos: () => { const out = {}; model.traverse(o => { if (o.userData?.modelo) { let n = 0; o.traverse(q => { if (q.isMesh) n++; }); out[o.name] = n; } }); return out; },
+  // encuadre de arquitectura: cámara nivelada (verticales rectas), lente de ~24 mm y desplazamiento óptico hacia abajo
+  arch: (x, y, lx, ly, mm = 24, shift = 0.12, h = 1.45) => {
+    APTO_API.pose(x, y, h, lx, ly, h);
+    const hf = 2 * Math.atan(18 / mm), vis = 2 * Math.atan(Math.tan(hf / 2) / camera.aspect);
+    const full = 2 * Math.atan(Math.tan(vis / 2) * (1 + 2 * shift)) * 180 / Math.PI;
+    fovTarget = full; camera.fov = full;
+    const w = innerWidth, hh = innerHeight; camera.setViewOffset(w, hh * (1 + 2 * shift), 0, hh * 2 * shift, w, hh); camera.updateProjectionMatrix(); poke(6);
+  },
+  archOff: () => { camera.clearViewOffset(); fovTarget = mode === 'orbit' ? 42 : (camera.aspect < 0.9 ? 74 : 60); poke(6); },
   pose: (x, y, h, lx, ly, lh) => { flight = null; poke(6); camera.position.copy(toScene(x, y, h)); const l = toScene(lx, ly, lh); camera.lookAt(l); yawPitchFrom(l.clone().sub(camera.position)); if (mode === 'orbit') controls.target.copy(l); },
 };

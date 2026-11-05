@@ -5,7 +5,7 @@
 // en la raíz del repositorio) y esbuild (`npx esbuild` o variable ESBUILD con su ruta).
 //   node apartamento-102/tools/build.mjs
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,9 +17,12 @@ const geo = JSON.parse(readFileSync(join(root, 'data/propuesta-102.json'), 'utf8
 delete geo.original.rotulos;
 // propuesta de balcón (no figura en el DWG): se embebe aparte para que el visor la rotule como tal
 const propuesta = geo.balcon;
+// muebles de terceros preparados con tools/preparar_muebles.py (créditos en modelo/muebles/CREDITOS.md)
+const muebles = Object.fromEntries(readdirSync(join(root, 'modelo/muebles')).filter(f => f.endsWith('.glb'))
+  .map(f => [f.replace(/\.glb$/, ''), readFileSync(join(root, 'modelo/muebles', f)).toString('base64')]));
 writeFileSync(join(root, 'dist/datos.js'),
   '/* Generado por tools/build.mjs: modelo GLB y propuesta de redistribución del apartamento 102 (rediseño conceptual). */\n' +
-  `window.APTO102=${JSON.stringify({ glb, geo, propuesta })};\n`);
+  `window.APTO102=${JSON.stringify({ glb, geo, propuesta, muebles })};\n`);
 
 const esbuild = process.env.ESBUILD || 'esbuild';
 execFileSync(esbuild, [join(root, 'src/app.mjs'), '--bundle', '--format=iife', '--target=es2020', '--minify',

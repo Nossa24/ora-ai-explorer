@@ -49,35 +49,34 @@ puertas = [
     {'id': 'principal', 'rect': [5.25, 3.85, 5.40, 4.67], 'ancho': 0.82, 'tipo': 'batiente', 'bisagra': [5.42, 3.87], 'angulo': -90, 'origen': PRO},
     {'id': 'bano_principal', 'rect': [5.55, 4.67, 6.30, 4.79], 'ancho': 0.75, 'tipo': 'batiente', 'bisagra': [5.57, 4.79], 'angulo': 90, 'origen': PRO},
     {'id': 'bano_social', 'rect': [3.85, 4.67, 4.55, 4.79], 'ancho': 0.7, 'tipo': 'corrediza', 'origen': PRO},
-    {'id': 'deposito', 'rect': [2.75, 4.67, 3.45, 4.79], 'ancho': 0.7, 'tipo': 'corrediza', 'origen': PRO},
+    {'id': 'ropas', 'rect': [2.75, 4.67, 3.45, 4.79], 'ancho': 0.7, 'tipo': 'corrediza', 'acabado': 'oculta en el muro, al ras y con el acabado del muro', 'origen': PRO},
 ]
 vanos = [   # pasos sin hoja
     {'id': 'vestier', 'rect': [6.85, 4.67, 7.75, 4.79], 'ancho': 0.9},
 ]
 aparatos = [   # posición PROPUESTA (no del DWG)
-    # cocina en U: mesón norte (estufa y horno) + columna de ropas (oeste) + barra-península con lavaplatos (sur)
-    {'id': 'meson_norte', 'tipo': 'meson', 'rect': [1.55, 6.85, 2.95, 7.45]},   # arranca en 1,55: paso de 0,70 m frente a la columna de ropas al entrar
+    # cocina en U: mesón norte (estufa y horno) + despensa al ingreso (oeste) + barra-península con lavaplatos (sur)
+    {'id': 'meson_norte', 'tipo': 'meson', 'rect': [1.50, 6.85, 2.95, 7.45]},   # arranca en 1,50: paso de 0,95 m frente a la despensa al entrar
     {'id': 'peninsula', 'tipo': 'meson', 'rect': [0.15, 4.50, 1.60, 5.40], 'barra': {'voladizo_sur': 0.30, 'altura': 0.90, 'puestos': 2}},
     {'id': 'nevera', 'tipo': 'nevera', 'rect': [2.97, 6.82, 3.58, 7.45]},
     {'id': 'lavaplatos', 'tipo': 'lavaplatos', 'centro': [1.18, 5.11]},
-    {'id': 'estufa', 'tipo': 'estufa', 'rect': [1.95, 6.94, 2.55, 7.38]},
-    # zona de ropas: columna integrada a la cocina contra el medianero, frente al este, puertas corredizas
-    {'id': 'columna_ropas', 'tipo': 'ropas', 'rect': [0.15, 5.40, 0.80, 6.45]},
+    {'id': 'estufa', 'tipo': 'estufa', 'rect': [1.92, 6.94, 2.52, 7.38]},
     {'id': 'ducha_social', 'tipo': 'ducha', 'rect': [3.70, 6.55, 4.75, 7.45]},
     {'id': 'sanitario_social', 'tipo': 'sanitario', 'rect': [3.70, 5.50, 4.40, 5.92]},
     {'id': 'lavamanos_social', 'tipo': 'lavamanos', 'rect': [4.30, 5.98, 4.75, 6.48]},
     {'id': 'ducha_principal', 'tipo': 'ducha', 'rect': [4.87, 6.50, 6.65, 7.45]},
     {'id': 'lavamanos_principal', 'tipo': 'lavamanos', 'rect': [4.87, 5.15, 5.40, 6.35]},
     {'id': 'sanitario_principal', 'tipo': 'sanitario', 'rect': [6.15, 5.30, 6.65, 5.72]},
-    {'id': 'lavadora_secadora', 'tipo': 'lavadora', 'rect': [0.15, 5.83, 0.78, 6.45]},
-    {'id': 'lavadero', 'tipo': 'lavadero', 'rect': [0.17, 5.42, 0.62, 5.80]},
+    # zona de ropas junto a los ductos (antiguo cuarto del hall): lavadora-secadora apilada y lavadero, frente al sur
+    {'id': 'lavadora_secadora', 'tipo': 'lavadora', 'rect': [2.62, 5.30, 3.22, 5.95]},
+    {'id': 'lavadero', 'tipo': 'lavadero', 'rect': [3.22, 5.45, 3.58, 5.95]},
 ]
 mobiliario = {   # huellas ILUSTRATIVAS (el visor las usa como obstáculo al caminar)
-    'sofa': [0.15, 1.00, 1.00, 3.20], 'mesa_centro': [1.35, 1.40, 1.70, 2.80], 'tv': [2.55, 1.30, 2.599, 2.90], 'butaca': [0.25, 0.30, 0.95, 0.85],
-    'lampara_sala': [0.20, 3.30, 0.48, 3.58], 'banquetas': [0.43, 4.08, 1.41, 4.46], 'estantes_deposito': [2.62, 5.30, 3.58, 5.95],
+    'sofa': [0.15, 1.04, 1.10, 3.16], 'mesa_centro': [1.40, 1.40, 1.70, 2.80], 'tv': [2.55, 1.30, 2.599, 2.90], 'butaca': [0.20, 0.22, 1.05, 0.82],
+    'lampara_sala': [0.20, 3.30, 0.48, 3.58], 'banquetas': [0.43, 4.08, 1.41, 4.46], 'despensa': [0.15, 5.40, 0.55, 6.45],
     'cama_2': [2.75, 1.05, 4.65, 2.45], 'noche_2a': [2.75, 0.62, 3.15, 1.00], 'noche_2b': [2.75, 2.50, 3.15, 2.88], 'armario_2': [3.85, 3.10, 5.25, 3.70],
     'escritorio_2': [4.30, 0.17, 5.20, 0.65], 'silla_2': [4.55, 0.70, 4.95, 1.04],
-    'cama_p': [5.92, 1.75, 7.92, 3.35], 'noche_pa': [7.48, 1.32, 7.92, 1.70], 'noche_pb': [7.48, 3.40, 7.92, 3.78], 'butaca_p': [6.60, 0.25, 7.25, 0.90],
+    'cama_p': [5.92, 1.75, 7.92, 3.35], 'noche_pa': [7.48, 1.32, 7.92, 1.70], 'noche_pb': [7.48, 3.40, 7.92, 3.78], 'butaca_p': [6.50, 0.22, 7.35, 0.82],
     'closet_v1': [7.35, 5.25, 7.925, 7.45], 'closet_v2': [6.77, 6.85, 7.35, 7.45],
     'balcon_sillas': [0.17, -1.45, 1.25, -0.20], 'balcon_jardinera': [2.27, -1.62, 2.57, -0.85],   # puerta corrediza al este: libre
 }
@@ -89,7 +88,7 @@ ESPACIOS = [   # id, nombre, semilla
     ('bano_principal', 'Baño principal', (5.8, 6.0)),
     ('vestier', 'Vestier', (7.3, 6.0)),
     ('bano_social', 'Baño social', (4.2, 6.2)),
-    ('deposito', 'Depósito', (3.1, 5.4)),
+    ('ropas', 'Ropas', (3.1, 5.4)),
 ]
 
 # ------------------------------------------------------------------ áreas por relleno sobre una malla de 1 cm
@@ -158,16 +157,19 @@ data = {
     'rotulo': 'Propuesta de redistribución – apto 102',
     'advertencia': 'No es planta verificada ni aprobada del proyecto. Conserva del DWG la envolvente, los vanos de fachada, la puerta de acceso y los ductos; la distribución interior es una propuesta.',
     'area_rotulada_dwg_m2': 60.42, 'programa_original': '2 alcobas + estudio, 2 baños, sala-comedor, cocina, ropas (DWG)',
-    'programa_propuesto': '2 habitaciones (principal con baño y vestier), 2 baños, sala con cocina en U y barra de 2 puestos (sin comedor), columna de ropas junto al acceso, depósito, balcón propuesto',
-    'ropas': {'ubicacion': 'columna integrada a la cocina contra el medianero, inmediata al acceso', 'medidas': [0.65, 1.05], 'cerramiento': 'puertas corredizas en la carpintería de la cocina', 'frente_libre_m': 1.70,
-              'pendientes': ['desagüe hasta el ducto D1 (≈3,0–3,5 m horizontales; pendiente ≥2 % ≈ 6–7 cm de afinado o paso por placa; alternativa: bomba de desagüe)', 'ventilación: secadora de condensación o bomba de calor y extracción mecánica hacia el ducto (sin ventana)', 'circuito eléctrico dedicado', 'bandeja antiderrame e impermeabilización', 'coincidencia de bajantes piso a piso']},
+    'programa_propuesto': '2 habitaciones (principal con baño y vestier), 2 baños, sala con cocina en U y barra de 2 puestos (sin comedor), despensa al ingreso, ropas junto a los ductos, balcón propuesto',
+    'ropas': {'ubicacion': 'antiguo cuarto junto a los ductos, con acceso desde el hall de alcobas', 'medidas': [0.96, 1.16], 'cerramiento': 'puerta corrediza oculta en el muro, al ras y con el acabado del muro', 'frente_libre_m': 0.51,
+              'redes': {'desague_a_ducto_m': 0.4, 'agua_desde': 'baño social (≈1 m)', 'ventilacion': 'extracción al ducto D1'},
+              'pendientes': ['confirmar con el ingeniero hidrosanitario la conexión al ducto D1 y la extracción', 'circuito eléctrico dedicado', 'impermeabilización del piso del cuarto'],
+              'alternativa_descartada': 'columna junto al acceso: desagüe ≈3,2 m al ducto, sin ventilación cercana y ruido en la zona social'},
+    'ingreso': {'paso_frente_a_frente_m': 0.95, 'paso_medido_m': 1.0, 'limita': 'la puerta de acceso de 1,00 m'},
     'sistema_local': orig['sistema_local'], 'envolvente_exterior': [0, 0, W, H],
     'muros_rectangulos': [m[:4] for m in muros], 'muros_origen': [m[4] for m in muros],
     'ventanas': ventanas, 'puertas': puertas, 'vanos': vanos, 'umbrales': umbrales, 'aparatos': aparatos,
     'ductos': [m[:4] for m in muros[6:8]], 'espacios': espacios, 'mobiliario': mobiliario,
     'cotas': [   # medidas principales de la propuesta (las del DWG original están en original-102-dwg.json)
         {'medida': 2.449, 'a': [0.15, 3.85], 'b': [2.599, 3.85]}, {'medida': 1.45, 'a': [0.15, 5.0], 'b': [1.60, 5.0]}, {'medida': 0.90, 'a': [1.60, 4.9], 'b': [2.50, 4.9]},
-        {'medida': 0.85, 'a': [1.70, 2.0], 'b': [2.55, 2.0]}, {'medida': 1.20, 'a': [1.40, -0.3], 'b': [2.599, -0.3]}, {'medida': 1.70, 'a': [0.80, 6.0], 'b': [2.50, 6.0]}, {'medida': 0.70, 'a': [0.855, 6.65], 'b': [1.55, 6.65]},
+        {'medida': 0.85, 'a': [1.70, 2.0], 'b': [2.55, 2.0]}, {'medida': 1.20, 'a': [1.40, -0.3], 'b': [2.599, -0.3]}, {'medida': 0.95, 'a': [0.55, 6.65], 'b': [1.50, 6.65]}, {'medida': 1.45, 'a': [2.3, 5.40], 'b': [2.3, 6.85]},
         {'medida': 2.50, 'a': [2.75, 2.95], 'b': [5.25, 2.95]}, {'medida': 3.55, 'a': [3.6, 0.15], 'b': [3.6, 3.70]},
         {'medida': 2.525, 'a': [5.40, 3.6], 'b': [7.925, 3.6]}, {'medida': 4.52, 'a': [7.6, 0.15], 'b': [7.6, 4.67]},
         {'medida': 1.78, 'a': [4.87, 6.0], 'b': [6.65, 6.0]},
@@ -187,7 +189,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Arc, Polygon
 import math
 COL = {'social': '#efe6d3', 'hall': '#e6e8ea', 'habitacion_2': '#e3e7ef', 'principal': '#eae3ec', 'bano_principal': '#e0ecec',
-       'vestier': '#efe8df', 'bano_social': '#e0ecec', 'deposito': '#e9efe2'}
+       'vestier': '#efe8df', 'bano_social': '#e0ecec', 'ropas': '#f6e6cf'}
 def plano(ax, titulo):
     for e in espacios:
         for x0, y0, x1, y1 in e['piso_rectangulos']:
@@ -232,7 +234,7 @@ def plano(ax, titulo):
         ax.plot([d[0], d[2]], [d[1], d[3]], color='w', lw=.6); ax.plot([d[0], d[2]], [d[3], d[1]], color='w', lw=.6)
     for e in espacios:
         x0, y0, x1, y1 = e['caja']
-        cx, cy = {'social': (1.25, 3.75), 'hall': (4.0, 4.24), 'deposito': (3.1, 4.95), 'vestier': (7.05, 6.2), 'bano_social': (4.22, 5.15), 'bano_principal': (5.75, 5.95)}.get(e['id'], ((x0 + x1) / 2, (y0 + y1) / 2))
+        cx, cy = {'social': (1.25, 3.75), 'hall': (4.0, 4.24), 'ropas': (3.1, 4.95), 'vestier': (7.05, 6.2), 'bano_social': (4.22, 5.15), 'bano_principal': (5.75, 5.95)}.get(e['id'], ((x0 + x1) / 2, (y0 + y1) / 2))
         fs = 8.5 if e['area_neta_m2'] > 5 else 6.5
         nm = e['nombre'].replace(' · ', '\n') if e['id'] == 'social' else e['nombre'].replace(' ', '\n') if e['area_neta_m2'] < 5 else e['nombre']
         ax.text(cx, cy, f"{nm}\n{e['area_neta_m2']:.2f} m²".replace('.', ','), ha='center', va='center', fontsize=fs, color='#2b2a28',

@@ -170,6 +170,46 @@ class Mesh:
         T = [t for t in T if len({tuple(np.round(Ps[q], 7)) for q in t}) == 3]
         self.tris(mat, Ps, Ns, Us, T)
 
+    def soft(self, mat, cx, cy, cz, hx, hy, hz, e1=0.3, e2=0.18, nu=28, nv=16, deform=None):
+        """Volumen blando (superelipsoide) en escena: cojines, almohadas, duvet, tapizados.
+        h* = semiejes (y vertical); e1 redondez vertical, e2 en planta (0 = caja, 1 = elipsoide).
+        deform(x, y, z) -> (x, y, z) en coordenadas locales, antes de trasladar. Normales por caras."""
+        sg = lambda w, m: math.copysign(abs(w) ** m, w)
+        th = np.linspace(-math.pi / 2, math.pi / 2, nv + 1); ph = np.linspace(-math.pi, math.pi, nu + 1)
+        V = np.zeros((nv + 1, nu + 1, 3))
+        for j, t in enumerate(th):
+            for i, f in enumerate(ph):
+                x = hx * sg(math.cos(t), e1) * sg(math.cos(f), e2); y = hy * sg(math.sin(t), e1); z = hz * sg(math.cos(t), e1) * sg(math.sin(f), e2)
+                if deform:
+                    x, y, z = deform(x, y, z)
+                V[j, i] = (x, y, z)
+        N = np.zeros_like(V)
+        for j in range(nv):
+            for i in range(nu):
+                a, b, c, d = V[j, i], V[j, i + 1], V[j + 1, i + 1], V[j + 1, i]
+                n = np.cross(c - a, d - b)
+                for (jj, ii) in ((j, i), (j, i + 1), (j + 1, i + 1), (j + 1, i)):
+                    N[jj, ii] += n
+        N[:, 0] += N[:, -1]; N[:, -1] = N[:, 0]                # costura
+        ln = np.linalg.norm(N, axis=2, keepdims=True); N = N / np.where(ln == 0, 1, ln)
+        if (N * V).sum() < 0:                                   # normales hacia afuera
+            N = -N
+        N[0, :] = [0, -1, 0]; N[-1, :] = [0, 1, 0]               # polos
+        pos, nor, uv, idx = self._get(mat); base = len(pos)
+        for j in range(nv + 1):
+            for i in range(nu + 1):
+                x, y, z = V[j, i]; pos.append([cx + x, cy + y, cz + z]); nor.append(N[j, i].tolist())
+                uv.append([(x + z) * 1.0, y * 1.0 + j / nv * 0.2])
+        W_ = nu + 1
+        for j in range(nv):
+            for i in range(nu):
+                a = base + j * W_ + i; b = a + 1; c = a + W_ + 1; d = a + W_
+                pa, pb, pc = np.array(pos[a]), np.array(pos[b]), np.array(pos[c])
+                if np.dot(np.cross(pb - pa, pc - pa), np.array(nor[a]) + nor[b] + nor[c]) < 0:
+                    idx += [a, c, b, a, d, c]
+                else:
+                    idx += [a, b, c, a, c, d]
+
     def sphere(self, mat, cx, cy, cz, r, sx=1, sy=1, sz=1, seg=18):
         pos, nor, uv, idx = self._get(mat)
         base = len(pos)
@@ -218,7 +258,7 @@ MATS = {
     'carpinteria': ([0.84, 0.78, 0.69, 1], 0.55, 0, {}), 'marco_puerta': ([0.84, 0.78, 0.69, 1], 0.55, 0, {}), 'puerta_entrada': ([0.30, 0.24, 0.19, 1], 0.5, 0, {}),
     'guardaescoba': ([0.95, 0.94, 0.92, 1], 0.5, 0, {}),
     'meson': ([0.88, 0.87, 0.84, 1], 0.22, 0, {}), 'gabinete_cocina': ([0.70, 0.56, 0.40, 1], 0.5, 0, {}), 'salpicadero': ([0.92, 0.91, 0.88, 1], 0.2, 0, {}),
-    'acero': ([0.72, 0.73, 0.74, 1], 0.28, 1.0, {}), 'cromo': ([0.85, 0.85, 0.86, 1], 0.08, 1.0, {}), 'electro': ([0.62, 0.63, 0.64, 1], 0.32, 0.9, {}),
+    'acero': ([0.72, 0.73, 0.74, 1], 0.28, 1.0, {}), 'cromo': ([0.85, 0.85, 0.86, 1], 0.08, 1.0, {}), 'electro': ([0.62, 0.63, 0.64, 1], 0.32, 0.9, {}), 'electro_blanco': ([0.92, 0.92, 0.91, 1], 0.25, 0, {}),
     'vidrio_negro': ([0.02, 0.02, 0.025, 1], 0.06, 0.2, {}),
     'ceramica_blanca': ([0.96, 0.96, 0.95, 1], 0.12, 0, {}), 'vidrio_ducha': ([0.85, 0.92, 0.95, 0.14], 0.03, 0, {}),
     'revestimiento_bano': ([0.88, 0.86, 0.82, 1], 0.25, 0, {}), 'revestimiento_ropas': ([0.93, 0.93, 0.92, 1], 0.2, 0, {}),
@@ -257,6 +297,22 @@ def B(m, mat, x0, y0, x1, y1, z0, z1, faces='all'):
 
 def RB(m, mat, x0, y0, x1, y1, z0, z1, r, k=2):
     a, b = P(x0, y0), P(x1, y1); m.rbox(mat, a[0], z0, a[1], b[0], z1, b[1], r, k)
+
+
+def SOFT(m, mat, x0, y0, x1, y1, z0, z1, e1=0.3, e2=0.18, nu=28, nv=16, deform=None):
+    """Volumen blando en coordenadas de planta (caja x0..x1, y0..y1, z0..z1)."""
+    a, b = P(x0, y0), P(x1, y1)
+    m.soft(mat, (a[0] + b[0]) / 2, (z0 + z1) / 2, (a[1] + b[1]) / 2, abs(b[0] - a[0]) / 2, (z1 - z0) / 2, abs(b[1] - a[1]) / 2, e1, e2, nu, nv, deform)
+
+
+def pillow(m, mat, x0, y0, x1, y1, z0, z1, lean=0.0):
+    """Almohada: bordes pellizcados, centro abombado; lean inclina la almohada hacia el cabecero (m)."""
+    hx_, hz_ = abs(x1 - x0) / 2, abs(y1 - y0) / 2
+    def d(x, y, z):
+        r = max(abs(x) / hx_, abs(z) / hz_) if hx_ and hz_ else 0
+        y = y * (1 - 0.38 * r ** 4) + 0.006 * math.sin(7 * x / hx_) * (1 - r)
+        return x, y, z
+    SOFT(m, mat, x0, y0, x1, y1, z0, z1, 0.55, 0.22, 30, 14, d)
 
 
 def CY(m, mat, x, y, r, z0, h, seg=24, ry=None, cap=True):
@@ -457,25 +513,40 @@ def shower(m, rect, glass_side, opening):
 
 # --- dormitorios
 def bed(m, x0, y0, x1, y1, head, duvet='tela_cama', accent='tela_acento'):
-    """Cama con base tapizada, colchón, duvet, almohadas y cabecero. head = muro del cabecero."""
-    RB(m, 'madera_mueble', x0, y0, x1, y1, 0.06, 0.32, 0.02)
-    for xx in (x0 + 0.08, x1 - 0.08):
-        for yy in (y0 + 0.08, y1 - 0.08):
-            CY(m, 'metal_negro', xx, yy, 0.015, 0, 0.06, seg=8)
-    RB(m, 'tela_cama', x0 + 0.02, y0 + 0.02, x1 - 0.02, y1 - 0.02, 0.32, 0.52, 0.05)                  # colchón
-    if head == 'e':
-        RB(m, duvet, x0 - 0.01, y0 - 0.015, x1 - 0.42, y1 + 0.015, 0.36, 0.555, 0.04)                 # duvet
-        RB(m, accent, x0 + 0.01, y0 - 0.02, x0 + 0.48, y1 + 0.02, 0.50, 0.575, 0.03)                  # pie de cama
-        npil = 2 if (y1 - y0) > 1.2 else 1
-        for k in range(npil):
-            a = y0 + 0.08 + k * ((y1 - y0) - 0.16) / npil; b = a + ((y1 - y0) - 0.16) / npil - 0.04
-            RB(m, 'tela_cama', x1 - 0.40, a, x1 - 0.08, b, 0.50, 0.66, 0.06)
-            RB(m, accent, x1 - 0.50, a + 0.06, x1 - 0.38, b - 0.06, 0.54, 0.80, 0.06)
-        RB(m, 'tela_sofa', x1, y0 - 0.06, x1 + 0.055, y1 + 0.06, 0.20, 1.15, 0.025)                   # cabecero tapizado
-    elif head == 'o':
-        RB(m, duvet, x0 + 0.42, y0 - 0.015, x1 + 0.01, y1 + 0.015, 0.36, 0.555, 0.04)
-        RB(m, 'tela_cama', x0 + 0.08, y0 + 0.08, x0 + 0.40, y1 - 0.08, 0.50, 0.66, 0.06)
-        RB(m, 'tela_sofa', x0 - 0.055, y0 - 0.04, x0, y1 + 0.04, 0.20, 1.0, 0.025)
+    """Cama: base tapizada flotante, colchón, duvet blando que cae por los lados, pie de cama doblado,
+    almohadas pellizcadas y cabecero tapizado de canales verticales. head = muro del cabecero ('e' u 'o')."""
+    sgn = 1 if head == 'e' else -1
+    hx = x1 if head == 'e' else x0                      # línea del cabecero
+    fx_ = x0 if head == 'e' else x1                      # pie de la cama
+    lo, hi = min(hx, fx_), max(hx, fx_)
+    RB(m, 'metal_negro', lo + 0.10, y0 + 0.10, hi - 0.10, y1 - 0.10, 0.0, 0.10, 0.01, k=1)            # zócalo retranqueado: base flotante
+    RB(m, 'tela_sofa', lo, y0, hi, y1, 0.10, 0.34, 0.035)                                             # base tapizada
+    SOFT(m, 'tela_cama', lo + 0.015, y0 + 0.015, hi - 0.015, y1 - 0.015, 0.33, 0.55, 0.22, 0.10, 34, 12)   # colchón
+    W_ = y1 - y0
+    def duv(x, y, z):                                    # arrugas suaves sobre el duvet
+        return x, y + (0.006 * math.sin(9 * x) * math.cos(6 * z) if y > 0 else 0.0), z
+    dx0 = fx_ - sgn * 0.03; dx1 = hx - sgn * 0.62       # el duvet cubre hasta 0,62 m del cabecero
+    SOFT(m, duvet, min(dx0, dx1), y0 - 0.035, max(dx0, dx1), y1 + 0.035, 0.30, 0.585, 0.12, 0.05, 40, 14, duv)
+    tx0 = dx1 - sgn * 0.02; tx1 = dx1 + sgn * 0.20        # embozo doblado hacia las almohadas
+    SOFT(m, duvet, min(tx0, tx1), y0 - 0.03, max(tx0, tx1), y1 + 0.03, 0.555, 0.615, 0.5, 0.08, 30, 10)
+    px0 = fx_ - sgn * 0.02; px1 = fx_ + sgn * 0.50        # pie de cama doblado
+    SOFT(m, accent, min(px0, px1), y0 - 0.05, max(px0, px1), y1 + 0.05, 0.56, 0.60, 0.35, 0.06, 30, 10)
+    npil = 2 if W_ > 1.2 else 1
+    for k in range(npil):
+        a = y0 + 0.06 + k * (W_ - 0.12) / npil; b = a + (W_ - 0.12) / npil - 0.03
+        p0, p1 = hx - sgn * 0.08, hx - sgn * 0.44
+        pillow(m, 'tela_cama', min(p0, p1), a, max(p0, p1), b, 0.54, 0.74)
+        q0, q1 = hx - sgn * 0.30, hx - sgn * 0.58          # cojín decorativo delante
+        pillow(m, accent, min(q0, q1), a + 0.10, max(q0, q1), b - 0.10, 0.56, 0.72)
+    # cabecero de canales verticales tapizados sobre un panel
+    c0, c1 = (hx, hx + 0.03) if head == 'e' else (hx - 0.03, hx)
+    RB(m, 'tela_sofa', c0, y0 - 0.08, c1, y1 + 0.08, 0.30, 1.18, 0.006, k=1)
+    nch = max(5, int(round((y1 - y0 + 0.16) / 0.20)))
+    step = (y1 - y0 + 0.16) / nch
+    for k in range(nch):
+        ya = y0 - 0.08 + k * step + 0.004; yb = ya + step - 0.008
+        a0_, a1_ = (hx - 0.07, hx) if head == 'e' else (hx, hx + 0.07)
+        SOFT(m, 'tela_sofa', a0_, ya, a1_, yb, 0.34, 1.18, 0.12, 0.45, 18, 12)
 
 
 def nightstand(m, x0, y0, x1, y1, lamp=True):
@@ -563,7 +634,7 @@ for w in g['ventanas']:
 node102('ARQ_Dinteles_Antepechos', m, 'provisional', 'Vanos del DWG; alturas de dintel y antepecho supuestas', 'arquitectura')
 node102('ILU_Antepecho_sala', m_sala, 'provisional', 'Antepecho supuesto de la ventana de la sala (se retira con el balcón propuesto)', 'sin_balcon')
 
-WET = ('bano_social', 'bano_principal')
+WET = ('bano_social', 'bano_principal', 'ropas')
 for r in g['espacios']:
     m = Mesh()
     for x0, y0, x1, y1 in r['piso_rectangulos']:
@@ -632,12 +703,17 @@ for d in g['puertas']:
             B(m, 'carpinteria', x1 - 0.03, yc - 0.03, x1 + d['ancho'] + 0.02, yc, 0.01, HP)
             B(m, 'metal_negro', x0 - 0.05, yc - 0.035, x1 + d['ancho'] + 0.08, yc - 0.01, HP + 0.02, HP + 0.06)
             B(m, 'metal_negro', x1 + 0.03, yc - 0.06, x1 + 0.05, yc - 0.03, 0.85, 1.25)
+        elif d.get('acabado'):         # oculta: hoja al ras enchapada como el muro, sin marco; se ve el canto y una uñeta negra
+            B(m, 'muro', x1 - 0.03, (y0 + y1) / 2 - 0.02, x1, (y0 + y1) / 2 + 0.02, 0.0, ALT - 0.002)
+            B(m, 'metal_negro', x1 - 0.004, (y0 + y1) / 2 - 0.008, x1 + 0.001, (y0 + y1) / 2 + 0.008, 0.95, 1.15)
         else:                          # de bolsillo: la hoja se guarda dentro del muro, solo se ve el canto
             B(m, 'carpinteria', x1 - 0.04, (y0 + y1) / 2 - 0.02, x1, (y0 + y1) / 2 + 0.02, 0.01, HP)
         node102(f"ILU_Puerta_{d['id']}", m, 'propuesta', f"Puerta corrediza de {d['ancho']} m (propuesta)", 'rediseno')
 
 m = Mesh()
 for d in [*g['puertas'], *g['vanos']]:
+    if d.get('acabado'):
+        continue                     # puerta oculta: vano a toda altura, sin marco
     x0, y0, x1, y1 = d['rect']; mat = 'marco_puerta'
     if (x1 - x0) > (y1 - y0):
         B(m, mat, x0, y0 - 0.012, x0 + 0.02, y1 + 0.012, 0, HP); B(m, mat, x1 - 0.02, y0 - 0.012, x1, y1 + 0.012, 0, HP)
@@ -657,11 +733,11 @@ node102('ILU_Marcos_puertas', m, 'ilustrativo', 'Marcos y molduras ilustrativos'
 m = Mesh()
 for rid in ('bano_principal', 'bano_social'):
     clad(m, 'revestimiento_bano', rid, 0, 2.10)
-wall_quad(m, 'revestimiento_ropas', 'e', 0.155, 5.42, 0.155, 6.43, 0.0, 1.74)   # fondo cerámico de la columna de ropas
-wall_quad(m, 'salpicadero', 's', 1.55, 7.445, 2.95, 7.445, 0.90, 1.50)
-node102('ILU_Revestimientos', m, 'ilustrativo', 'Revestimientos de baños (2,10 m), fondo de la columna de ropas y salpicadero de cocina', 'acabados')
+clad(m, 'revestimiento_ropas', 'ropas', 0, 1.30)
+wall_quad(m, 'salpicadero', 's', 1.50, 7.445, 2.95, 7.445, 0.90, 1.50)
+node102('ILU_Revestimientos', m, 'ilustrativo', 'Revestimientos de baños (2,10 m), ropas (1,30 m) y salpicadero de cocina', 'acabados')
 m = Mesh()
-for rid in ('social', 'hall', 'habitacion_2', 'principal', 'vestier', 'deposito'):
+for rid in ('social', 'hall', 'habitacion_2', 'principal', 'vestier'):
     for side, xa, ya, xb, yb in wall_runs(rid):
         t = 0.012
         if side == 's':
@@ -675,7 +751,7 @@ for rid in ('social', 'hall', 'habitacion_2', 'principal', 'vestier', 'deposito'
 node102('ILU_Guardaescobas', m, 'ilustrativo', 'Guardaescobas ilustrativos', 'acabados')
 m = Mesh()
 DOWN = {'social': [(1.37, 1.0), (1.37, 2.3), (1.15, 3.75), (2.1, 5.6), (1.6, 6.4), (2.9, 6.8)], 'hall': [(3.4, 4.25), (4.6, 4.25)], 'habitacion_2': [(3.4, 1.8), (4.6, 1.8)],
-        'principal': [(6.0, 1.2), (7.0, 4.1)], 'bano_principal': [(5.75, 5.6), (5.75, 7.0)], 'vestier': [(7.05, 5.9)], 'bano_social': [(4.22, 5.6)], 'deposito': [(3.1, 5.0)]}
+        'principal': [(6.0, 1.2), (7.0, 4.1)], 'bano_principal': [(5.75, 5.6), (5.75, 7.0)], 'vestier': [(7.05, 5.9)], 'bano_social': [(4.22, 5.6)], 'ropas': [(3.1, 5.0)]}
 for pts in DOWN.values():
     for x, y in pts:
         CY(m, 'cromo', x, y, 0.055, ALT - 0.012, 0.008, seg=20); CY(m, 'luz_calida', x, y, 0.042, ALT - 0.016, 0.006, seg=20)
@@ -778,51 +854,57 @@ shower(m, fx['ducha_social']['rect'], 's', 0.45)
 node102('APA_Bano_social', m, 'propuesta', 'Baño social de la propuesta: ducha, sanitario suspendido y lavamanos', 'aparatos',
         huella=[fx['sanitario_social']['rect'], fx['lavamanos_social']['rect']])
 m = Mesh()
-cx0, cy0, cx1, cy1 = fx['columna_ropas']['rect']
-B(m, 'gabinete_cocina', cx0, cy0, cx1, cy0 + 0.02, 0, 2.28); B(m, 'gabinete_cocina', cx0, cy1 - 0.02, cx1, cy1, 0, 2.28)   # costados
-B(m, 'gabinete_cocina', cx0, cy0, cx1, cy1, 2.26, 2.28)                                                                      # techo
 x0, y0, x1, y1 = fx['lavadora_secadora']['rect']
-for (za, zb) in ((0.02, 0.86), (0.88, 1.72)):   # lavadora y secadora apiladas, frente al este
-    RB(m, 'laca_mueble', x0, y0, x1, y1 - 0.02, za, zb, 0.02)
-    c = P(x1, (y0 + y1) / 2)
-    m.cyl_axis('cromo', [c[0] - 0.006, (za + zb) / 2 - 0.04, c[1]], 0, 0.19, 0.022, seg=40)
-    m.cyl_axis('vidrio_negro', [c[0] - 0.012, (za + zb) / 2 - 0.04, c[1]], 0, 0.15, 0.012, seg=40)
-    B(m, 'metal_negro', x1 - 0.004, y0 + 0.04, x1 + 0.003, y1 - 0.08, zb - 0.10, zb - 0.04)   # panel de mandos, por fuera del canto redondeado
-a0, b0, a1, b1 = fx['lavadero']['rect']                                       # lavadero compacto con mueble
-RB(m, 'laca_mueble', a0, b0, a1, b1, 0, 0.86, 0.01, k=1); RB(m, 'ceramica_blanca', a0, b0, a1 + 0.01, b1, 0.86, 0.90, 0.01, k=2)
-B(m, 'vidrio_negro', a0 + 0.06, b0 + 0.05, a1 - 0.05, b1 - 0.05, 0.9, 0.902)
-CY(m, 'cromo', a0 + 0.04, (b0 + b1) / 2, 0.012, 1.0, 0.16, seg=10); RB(m, 'cromo', a0 + 0.03, (b0 + b1) / 2 - 0.01, a0 + 0.18, (b0 + b1) / 2 + 0.01, 1.14, 1.16, 0.008, k=1)
-B(m, 'gabinete_cocina', cx0, cy0 + 0.02, cx1 - 0.02, cy1 - 0.02, 1.74, 1.76)                                         # repisa
-RB(m, 'gabinete_cocina', cx1 - 0.02, cy0 + 0.02, cx1, cy1 - 0.02, 1.78, 2.26, 0.004, k=1)                             # gabinete alto
-B(m, 'toalla', cx0 + 0.05, cy0 + 0.08, cx1 - 0.10, cy0 + 0.45, 1.76, 1.86); B(m, 'libro_b', cx0 + 0.05, cy0 + 0.55, cx1 - 0.10, cy0 + 0.85, 1.76, 1.92)
-for k_, (ya, yb, xo) in enumerate(((cy0 + 0.01, cy0 + 0.545, 0.03), (cy0 + 0.02, cy0 + 0.555, 0.0))):   # dos hojas corredizas, recogidas sobre el lavadero
-    B(m, 'gabinete_cocina', cx1 + xo, ya, cx1 + xo + 0.02, yb, 0.02, 1.76)
-    B(m, 'metal_negro', cx1 + xo + 0.02, yb - 0.06, cx1 + xo + 0.025, yb - 0.04, 0.6, 1.3)
-B(m, 'metal_negro', cx1, cy0, cx1 + 0.055, cy1, 1.76, 1.78)                                                             # riel
-node102('APA_Ropas', m, 'propuesta', 'Zona de ropas de la propuesta: columna integrada a la cocina junto al acceso, con lavadora-secadora apilada, lavadero, almacenamiento y puertas corredizas. Desagüe y ventilación pendientes de viabilidad.', 'aparatos',
-        huella=[[cx0, cy0, cx1 + 0.055, cy1]])
+B(m, 'metal_negro', x0 + 0.01, y0 + 0.02, x1 - 0.01, y1 - 0.02, 0, 0.02)                # bandeja antiderrame
+for (za, zb) in ((0.03, 0.87), (0.89, 1.73)):   # lavadora y secadora apiladas, frente al sur (hacia la puerta)
+    RB(m, 'electro_blanco', x0 + 0.01, y0 + 0.02, x1 - 0.01, y1, za, zb, 0.025)
+    c = P((x0 + x1) / 2, y0 + 0.02)
+    m.cyl_axis('cromo', [c[0], (za + zb) / 2 - 0.04, c[1] + 0.004], 2, 0.20, 0.024, seg=48)
+    m.cyl_axis('vidrio_negro', [c[0], (za + zb) / 2 - 0.04, c[1] + 0.016], 2, 0.16, 0.014, seg=48)
+    B(m, 'vidrio_negro', x0 + 0.05, y0 + 0.014, x1 - 0.05, y0 + 0.02, zb - 0.11, zb - 0.04)   # panel de mandos
+a0, b0, a1, b1 = fx['lavadero']['rect']                                         # lavadero compacto con mueble bajo
+RB(m, 'gabinete_cocina', a0 + 0.01, b0 + 0.02, a1 - 0.005, b1, 0.10, 0.86, 0.006, k=1)
+B(m, 'metal_negro', a0 + 0.03, b0 + 0.05, a1 - 0.03, b1 - 0.02, 0, 0.10)
+RB(m, 'ceramica_blanca', a0, b0, a1, b1, 0.86, 0.90, 0.012, k=2)
+B(m, 'vidrio_negro', a0 + 0.04, b0 + 0.05, a1 - 0.04, b1 - 0.06, 0.9, 0.902)
+CY(m, 'cromo', (a0 + a1) / 2, b1 - 0.04, 0.012, 0.90, 0.22, seg=12); RB(m, 'cromo', (a0 + a1) / 2 - 0.01, b1 - 0.20, (a0 + a1) / 2 + 0.01, b1 - 0.03, 1.10, 1.12, 0.008, k=1)
+RB(m, 'gabinete_cocina', 2.63, 5.60, 3.57, 5.94, 1.80, 2.30, 0.004, k=1)                # gabinete alto
+B(m, 'gabinete_cocina', 2.63, 5.62, 3.57, 5.94, 1.76, 1.78)                             # repisa sobre la secadora
+B(m, 'toalla', 2.68, 5.66, 2.98, 5.92, 1.78, 1.88); B(m, 'ceramica_deco', 3.30, 5.70, 3.42, 5.86, 1.78, 1.97)
+B(m, 'acero', 2.64, 5.30, 3.56, 5.32, 2.05, 2.07)                                       # barra para colgar
+node102('APA_Ropas', m, 'propuesta', 'Zona de ropas junto a los ductos: lavadora-secadora apilada, lavadero y almacenamiento, tras puerta corrediza oculta desde el hall. Desagüe y extracción al ducto D1 (≈0,4 m).', 'aparatos',
+        huella=[fx['lavadora_secadora']['rect'], fx['lavadero']['rect']])
 
 # ------------------------------------------------------------------ MOBILIARIO ILUSTRATIVO
 def furn(name, build, huella=(), nota='Mobiliario de presentación ilustrativo', group='mobiliario', **kw):
     mm = Mesh(); build(mm); node102(name, mm, 'ilustrativo' if group == 'mobiliario' else 'propuesta', nota, group, huella=[list(map(float, h)) for h in huella], **kw)
 
 
-def sofa(m):
-    x0, y0, x1, y1 = MOBI['sofa']
-    for yy in (y0 + 0.08, y1 - 0.08):
-        for xx in (x0 + 0.1, x1 - 0.1):
-            CY(m, 'metal_negro', xx, yy, 0.016, 0, 0.10, seg=10)
-    RB(m, 'tela_sofa', x0 + 0.02, y0 + 0.02, x1 - 0.02, y1 - 0.02, 0.10, 0.38, 0.04)
-    RB(m, 'tela_sofa', x0 + 0.02, y0 + 0.02, x1 - 0.02, y0 + 0.20, 0.10, 0.63, 0.06); RB(m, 'tela_sofa', x0 + 0.02, y1 - 0.20, x1 - 0.02, y1 - 0.02, 0.10, 0.63, 0.06)
-    RB(m, 'tela_sofa', x0 + 0.02, y0 + 0.20, x0 + 0.24, y1 - 0.20, 0.38, 0.78, 0.06)
-    mid = (y0 + y1) / 2
-    for a_, b_ in ((y0 + 0.205, mid - 0.004), (mid + 0.004, y1 - 0.205)):
-        RB(m, 'tela_sofa', x0 + 0.26, a_, x1 - 0.03, b_, 0.38, 0.53, 0.05); RB(m, 'tela_sofa', x0 + 0.22, a_ + 0.01, x0 + 0.44, b_ - 0.01, 0.50, 0.88, 0.09)
-    RB(m, 'tela_acento', x0 + 0.40, y0 + 0.24, x0 + 0.53, y0 + 0.66, 0.50, 0.86, 0.08); RB(m, 'tela_acento', x0 + 0.40, y1 - 0.62, x0 + 0.53, y1 - 0.24, 0.50, 0.84, 0.08)
-    RB(m, 'tela_cama', x0 + 0.30, y1 - 0.60, x1 + 0.005, y1 - 0.16, 0.525, 0.55, 0.012, k=1)
+# Muebles de terceros (Khronos glTF-Sample-Assets, ver modelo/muebles/CREDITOS.md): el nodo solo lleva la
+# posición; el visor coloca el modelo. Caja del modelo con el frente hacia +Z (convención glTF).
+MODELOS = {'sofa': ([-1.114, 0.0, -0.628], [1.074, 0.788, 0.395]), 'butaca': ([-0.414, 0.0, -0.277], [0.413, 0.686, 0.294])}
+RY = {'s': 0.0, 'e': 90.0, 'n': 180.0, 'o': -90.0}
 
 
-furn('MOB_Sofa', sofa, [MOBI['sofa']])
+def modelo(name, clave, rect, frente, nota, escala_max=1.0):
+    (mx0, my0, mz0), (mx1, my1, mz1) = MODELOS[clave]
+    x0, y0, x1, y1 = rect; ry = RY[frente]
+    ancho, fondo = mx1 - mx0, mz1 - mz0                       # ancho a lo largo del frente
+    lx, ly = (fondo, ancho) if frente in ('e', 'o') else (ancho, fondo)
+    sc = min(escala_max, (x1 - x0) / lx, (y1 - y0) / ly)
+    c, s_ = math.cos(math.radians(ry)), math.sin(math.radians(ry))
+    cx_, cz_ = (mx0 + mx1) / 2 * sc, (mz0 + mz1) / 2 * sc
+    rx, rz = cx_ * c + cz_ * s_, -cx_ * s_ + cz_ * c           # centro de la caja tras girar
+    tx, tz = P((x0 + x1) / 2, (y0 + y1) / 2)
+    fx0, fy0 = (x0 + x1) / 2 - lx * sc / 2, (y0 + y1) / 2 - ly * sc / 2
+    hue = [round(fx0, 3), round(fy0, 3), round(fx0 + lx * sc, 3), round(fy0 + ly * sc, 3)]
+    nodes.append((name, Mesh(), {'verificado': False, 'fuente': nota, 'grupo': 'mobiliario', 'categoria': 'ilustrativo', 'modelo': clave,
+                                 'escala': round(sc, 4), 'huella': [hue]}, (tx - rx, 0.0, tz - rz), ry))
+
+
+modelo('MOB_Sofa', 'sofa', MOBI['sofa'], 'e', 'Sofá ilustrativo (modelo GlamVelvetSofa, CC BY 4.0, Wayfair LLC / Khronos)')
+modelo('MOB_Butaca_sala', 'butaca', MOBI['butaca'], 'n', 'Butaca ilustrativa (modelo SheenChair, CC0, Wayfair LLC / Khronos)')
+modelo('MOB_Butaca_principal', 'butaca', MOBI['butaca_p'], 'n', 'Butaca ilustrativa (modelo SheenChair, CC0, Wayfair LLC / Khronos)')
 
 
 def sala(m):
@@ -836,28 +918,25 @@ def sala(m):
     RB(m, 'textil_tapete', 0.30, 1.20, 1.80, 3.05, 0, 0.012, 0.005, k=1)
     a0, b0, a1, b1 = MOBI['tv']                     # televisor a ras del muro, sin mueble: libera el eje hacia el balcón
     RB(m, 'pantalla', a0 + 0.005, (b0 + b1) / 2 - 0.62, a1 - 0.005, (b0 + b1) / 2 + 0.62, 0.95, 1.66, 0.008, k=1)
-    a0, b0, a1, b1 = MOBI['butaca']                 # butaca junto a la ventana
-    RB(m, 'tela_sofa', a0, b0, a1, b1, 0.12, 0.42, 0.06); RB(m, 'tela_sofa', a0, b0, a1, b0 + 0.16, 0.42, 0.82, 0.07)
-    RB(m, 'tela_sofa', a0, b0, a0 + 0.12, b1, 0.42, 0.62, 0.05); RB(m, 'tela_sofa', a1 - 0.12, b0, a1, b1, 0.42, 0.62, 0.05)
-    for xx in (a0 + 0.06, a1 - 0.06):
-        for yy in (b0 + 0.06, b1 - 0.06):
-            CY(m, 'metal_negro', xx, yy, 0.015, 0, 0.12, seg=8)
     art(m, 'e', 0.152, 1.50, 0.152, 2.70, 1.15, 1.75)
     x, y = [(MOBI['lampara_sala'][i] + MOBI['lampara_sala'][i + 2]) / 2 for i in (0, 1)]
     CY(m, 'metal_negro', x, y, 0.13, 0, 0.02, seg=24); CY(m, 'metal_negro', x, y, 0.01, 0.02, 1.38, seg=8); LA(m, 'pantalla_lampara', x, y, 1.40, [(0.19, 0), (0.15, 0.26)], seg=28)
 
 
-furn('MOB_Sala', sala, [MOBI[k] for k in ('mesa_centro', 'tv', 'lampara_sala', 'butaca')])
+furn('MOB_Sala', sala, [MOBI[k] for k in ('mesa_centro', 'tv', 'lampara_sala')])
 
 
 def barra(m):
     """Dos banquetas a 0,65 m frente al voladizo de la península y dos lámparas colgantes."""
     for cx in (0.62, 1.22):
         cy = 4.27
-        CY(m, 'metal_negro', cx, cy, 0.19, 0, 0.012, seg=24); CY(m, 'metal_negro', cx, cy, 0.022, 0.012, 0.60, seg=10)
-        CY(m, 'metal_negro', cx, cy, 0.16, 0.30, 0.008, seg=24, cap=False)
-        RB(m, 'tela_silla', cx - 0.19, cy - 0.17, cx + 0.19, cy + 0.17, 0.60, 0.67, 0.03)
-        RB(m, 'tela_silla', cx - 0.17, cy - 0.17, cx + 0.17, cy - 0.12, 0.67, 0.88, 0.025)
+        LA(m, 'metal_negro', cx, cy, 0.0, [(0.0, 0.0), (0.19, 0.0), (0.195, 0.006), (0.17, 0.014), (0.03, 0.03), (0.0, 0.03)], seg=40)   # base
+        CY(m, 'metal_negro', cx, cy, 0.022, 0.02, 0.56, seg=16)
+        LA(m, 'metal_negro', cx, cy, 0.295, [(0.155, 0.0), (0.165, 0.006), (0.155, 0.012), (0.145, 0.006), (0.155, 0.0)], seg=40)   # aro reposapiés
+        LA(m, 'metal_negro', cx, cy, 0.56, [(0.02, 0.0), (0.15, 0.02), (0.16, 0.035), (0.0, 0.035)], seg=40)                          # asiento rígido
+        SOFT(m, 'tela_silla', cx - 0.185, cy - 0.175, cx + 0.185, cy + 0.175, 0.585, 0.665, 0.35, 0.55, 32, 10)                        # cojín tapizado
+        SOFT(m, 'tela_silla', cx - 0.17, cy - 0.205, cx + 0.17, cy - 0.135, 0.62, 0.86, 0.3, 0.45, 26, 12,
+             lambda x, y, z: (x, y, z - 0.06 * (x / 0.17) ** 2))                                                                         # respaldo curvo
         CY(m, 'metal_negro', cx, 4.95, 0.004, 1.55, ALT - 1.55, seg=6)
         LA(m, 'metal_negro', cx, 4.95, 1.38, [(0.0, 0.18), (0.03, 0.175), (0.10, 0.06), (0.11, 0.0)], seg=28)
         SP(m, 'luz_calida', cx, 4.95, 1.40, 0.04, seg=10)
@@ -869,19 +948,18 @@ def barra(m):
 furn('MOB_Barra', barra, [MOBI['banquetas']], nota='Banquetas y lámparas ilustrativas de la barra')
 
 
-def deposito(m):
-    x0, y0, x1, y1 = MOBI['estantes_deposito']
-    for xx in (x0 + 0.01, x1 - 0.03):
-        B(m, 'laca_mueble', xx, y1 - 0.42, xx + 0.02, y1 - 0.02, 0, 2.2)
-    for zz in (0.05, 0.55, 1.05, 1.55, 2.05):
-        B(m, 'laca_mueble', x0 + 0.01, y1 - 0.42, x1 - 0.01, y1 - 0.02, zz, zz + 0.02)
-    for i, zz in enumerate((0.57, 1.07, 1.57)):
-        for j in range(3):
-            xa = x0 + 0.08 + j * 0.30
-            B(m, ('libro_c', 'libro_b', 'laca_mueble')[(i + j) % 3], xa, y1 - 0.38, xa + 0.24, y1 - 0.06, zz, zz + 0.28)
+def despensa(m):
+    """Despensa de 0,40 m al ingreso, integrada a la carpintería de la cocina (puertas lisas con apertura por presión)."""
+    x0, y0, x1, y1 = MOBI['despensa']
+    B(m, 'metal_negro', x0, y0 + 0.02, x1 - 0.04, y1 - 0.02, 0, 0.08)
+    for i in range(2):
+        ya = y0 + (y1 - y0) * i / 2 + 0.002; yb = y0 + (y1 - y0) * (i + 1) / 2 - 0.002
+        RB(m, 'gabinete_cocina', x0, ya, x1, yb, 0.08, 2.28, 0.004, k=1)
+    B(m, 'luz_calida', x1 - 0.002, y0 + 0.03, x1 + 0.001, y1 - 0.03, 2.27, 2.28)
+    B(m, 'metal_negro', x1, (y0 + y1) / 2 - 0.004, x1 + 0.003, (y0 + y1) / 2 + 0.004, 0.08, 2.28)   # dilatación entre puertas
 
 
-furn('MOB_Deposito', deposito, [[2.62, 5.53, 3.58, 5.95]], nota='Estantería ilustrativa del depósito (antiguo cuarto de ropas)')
+furn('MOB_Despensa', despensa, [MOBI['despensa']], nota='Despensa ilustrativa al ingreso, integrada a la cocina')
 
 
 def cocina(m):
@@ -934,12 +1012,6 @@ def principal(m):
     for k in ('noche_pa', 'noche_pb'):
         nightstand(m, *MOBI[k])
     a0, b0, a1, b1 = MOBI['butaca_p']
-    RB(m, 'tela_sofa', a0, b0, a1, b1, 0.12, 0.42, 0.06); RB(m, 'tela_sofa', a0, b0, a1, b0 + 0.16, 0.42, 0.82, 0.07)
-    RB(m, 'tela_sofa', a0, b0, a0 + 0.12, b1, 0.42, 0.62, 0.05); RB(m, 'tela_sofa', a1 - 0.12, b0, a1, b1, 0.42, 0.62, 0.05)
-    RB(m, 'tela_acento', a0 + 0.17, b0 + 0.18, a1 - 0.17, b0 + 0.30, 0.45, 0.72, 0.06)
-    for xx in (a0 + 0.06, a1 - 0.06):
-        for yy in (b0 + 0.06, b1 - 0.06):
-            CY(m, 'madera_mueble', xx, yy, 0.015, 0, 0.12, seg=8)
     CY(m, 'metal_negro', a1 + 0.14, b1 - 0.05, 0.12, 0, 0.02, seg=20); CY(m, 'metal_negro', a1 + 0.14, b1 - 0.05, 0.01, 0.02, 1.35, seg=8)
     LA(m, 'pantalla_lampara', a1 + 0.14, b1 - 0.05, 1.37, [(0.17, 0), (0.13, 0.24)], seg=24)
     RB(m, 'textil_tapete', 5.55, 1.45, 6.75, 3.65, 0, 0.012, 0.005, k=1)
@@ -947,7 +1019,7 @@ def principal(m):
     curtain(m, 's', 5.40, 6.40, w=0.24)
 
 
-furn('MOB_Habitacion_principal', principal, [MOBI[k] for k in ('cama_p', 'noche_pa', 'noche_pb', 'butaca_p')])
+furn('MOB_Habitacion_principal', principal, [MOBI[k] for k in ('cama_p', 'noche_pa', 'noche_pb')] + [[MOBI['butaca_p'][2] + 0.02, MOBI['butaca_p'][3] - 0.17, MOBI['butaca_p'][2] + 0.26, MOBI['butaca_p'][3] + 0.07]])
 
 
 def vestier(m):
@@ -1082,10 +1154,11 @@ for name, mesh, extras, t, ry in nodes:
             {'bufferView': vi, 'componentType': 5125, 'count': len(it), 'type': 'SCALAR'},
         ]
         prims.append({'attributes': {'POSITION': a0, 'NORMAL': a0 + 1, 'TEXCOORD_0': a0 + 2}, 'indices': a0 + 3, 'material': mat_id(mname)})
-    if not prims:
+    if not prims and not extras.get('modelo'):
         continue
-    meshes.append({'name': name, 'primitives': prims})
-    nd = {'name': name, 'mesh': len(meshes) - 1, 'extras': extras}
+    nd = {'name': name, 'extras': extras}
+    if prims:
+        meshes.append({'name': name, 'primitives': prims}); nd['mesh'] = len(meshes) - 1
     if any(t):
         nd['translation'] = list(t)
     if ry:

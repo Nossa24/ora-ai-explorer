@@ -47,7 +47,7 @@ const frames = async (page, n = 2) => { await page.evaluate(() => APTO_API.rende
 // ------------------------------------------------------------------ programa y relación con el DWG
 test('programa: 2 habitaciones amplias, 2 baños, sin estudio', () => {
   const ids = g.espacios.map(r => r.id).sort();
-  assert.deepEqual(ids, ['bano_principal', 'bano_social', 'habitacion_2', 'hall', 'principal', 'deposito', 'social', 'vestier'].sort());
+  assert.deepEqual(ids, ['bano_principal', 'bano_social', 'habitacion_2', 'hall', 'principal', 'ropas', 'social', 'vestier'].sort());
   assert(!g.espacios.some(r => /estudio/i.test(r.id + r.nombre)), 'el estudio desaparece');
   assert(room('principal').area_neta_m2 > room('habitacion_2').area_neta_m2, 'la principal es la más generosa');
   assert(room('habitacion_2').area_neta_m2 >= 8.5, 'la secundaria no es pequeña');
@@ -62,10 +62,13 @@ test('programa: 2 habitaciones amplias, 2 baños, sin estudio', () => {
   const pen = g.aparatos.find(a => a.id === 'peninsula');
   assert(pen && pen.barra.puestos === 2 && Math.abs(pen.rect[2] - pen.rect[0] - 1.45) < 0.01, 'barra-península de 1,45 m');
   assert(!Object.keys(g.mobiliario).some(k => /comedor/.test(k)), 'sin comedor tradicional');
-  // ropas en la esquina izquierda al entrar, contra el medianero oeste y junto a la puerta de acceso
-  const col = g.aparatos.find(a => a.id === 'columna_ropas').rect, ent = g.puertas.find(d => d.id === 'entrada').rect;
-  assert(col[0] <= 0.16 && col[3] <= ent[1] && ent[1] - col[3] < 1.1, 'columna de ropas junto al acceso');
-  assert(g.ropas.pendientes.length >= 3, 'redes de ropas marcadas como pendientes de viabilidad');
+  // ropas junto a los ductos: la lavadora queda a menos de 0,6 m del ducto D1 y se entra desde el hall con puerta oculta
+  const lav = g.aparatos.find(a => a.id === 'lavadero').rect, d1 = g.ductos[0];
+  assert(d1[0] - lav[2] < 0.6 && lav[3] > d1[1], 'ropas junto al ducto D1');
+  assert.equal(g.puertas.find(d => d.id === 'ropas').tipo, 'corrediza'); assert(g.puertas.find(d => d.id === 'ropas').acabado, 'puerta oculta al ras');
+  assert(!g.aparatos.some(a => a.id === 'columna_ropas'), 'sin columna de ropas en el acceso');
+  assert(g.ingreso.paso_frente_a_frente_m >= 0.90, 'ingreso de al menos 0,90 m');
+  assert(g.ropas.pendientes.length >= 2, 'conexiones a confirmar con el ingeniero');
   assert.equal(g.estado, 'rediseño conceptual / propuesta comercial');
   assert.match(g.rotulo, /Propuesta de redistribución – apto 102/);
 });
@@ -124,19 +127,50 @@ test('con el mobiliario puesto se llega caminando a todos los espacios y al balc
       const kk = b * nx + a; if (!seen[kk] && libre(x0 + a * st, y0 + b * st)) { seen[kk] = 1; q.push(kk); }
     }
   }
-  const puntos = { cocina: [1.3, 5.8], nevera: [3.2, 6.5], barra: [1.0, 3.75], paso_barra: [2.0, 4.6], ropas_frente: [1.2, 5.9], sala: [1.5, 0.75], hall: [4.0, 4.2], habitacion_2: [4.0, 2.8], escritorio: [4.9, 1.3],
-    principal: [5.65, 2.5], ventana_principal: [6.0, 0.6], bano_principal: [5.9, 5.3], vestier: [7.0, 5.5], bano_social: [4.3, 5.2], deposito: [3.1, 5.05], balcon: [1.9, -0.8], balcon_fondo: [1.75, -1.4] };
+  const puntos = { cocina: [1.3, 5.8], nevera: [3.2, 6.5], barra: [1.0, 3.75], paso_barra: [2.0, 4.6], despensa_frente: [1.2, 5.9], sala: [1.5, 0.75], hall: [4.0, 4.2], habitacion_2: [4.0, 2.8], escritorio: [4.9, 1.3],
+    principal: [5.65, 2.5], ventana_principal: [6.0, 0.6], bano_principal: [5.9, 5.3], vestier: [7.0, 5.5], bano_social: [4.3, 5.2], ropas: [3.1, 5.05], balcon: [1.9, -0.8], balcon_fondo: [1.75, -1.4] };
   for (const [k, [x, y]] of Object.entries(puntos)) assert(seen[id(x, y)], `se llega a ${k}`);
 });
 
 // ------------------------------------------------------------------ visor
+test('ingreso: pasa un ancho libre de 0,90 m entre la despensa y el mesón hasta la cocina', () => {
+  const st = 0.01, x0 = 0, y0 = 4.5, nx = 300, ny = 300, seen = new Uint8Array(nx * ny), r = 0.45;
+  const id = (x, y) => Math.round((y - y0) / st) * nx + Math.round((x - x0) / st);
+  const q = [id(0.65, 6.95)]; assert(libre(0.65, 6.95, r)); seen[q[0]] = 1;
+  while (q.length) {
+    const k = q.pop(), i = k % nx, j = (k - i) / nx;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= ny) continue;
+      const kk = b * nx + a; if (!seen[kk] && libre(x0 + a * st, y0 + b * st, r)) { seen[kk] = 1; q.push(kk); }
+    }
+  }
+  assert(seen[id(1.9, 6.0)], 'con 0,90 m de ancho se llega del acceso a la cocina');
+});
+
+test('modelo 3D: el ingreso mide al menos 0,90 m entre la despensa y el mesón, y los muebles detallados cargan', async t => {
+  const page = await open(t);
+  const m = await page.evaluate(() => {
+    const r = [];
+    for (const h of [0.3, 0.6]) {   // a la altura del mueble bajo de la cocina (0–0,88 m) y de la despensa
+      const oeste = APTO_API.rayPlan(1.0, 6.2, h, -1, 0), este = APTO_API.rayPlan(1.0, 7.1, h, 1, 0);
+      r.push(+((1.0 + este) - (1.0 - oeste)).toFixed(3));
+    }
+    const barra = APTO_API.rayPlan(2.05, 5.0, 0.5, -1, 0) + APTO_API.rayPlan(2.05, 5.0, 0.5, 1, 0);
+    const eje = APTO_API.rayPlan(2.1, 2.0, 0.39, -1, 0) + APTO_API.rayPlan(2.1, 2.0, 1.2, 1, 0);
+    return { pasos: r, barra, eje, modelos: APTO_API.modelos() };
+  });
+  for (const p of m.pasos) assert(p >= 0.90, `paso de ingreso medido en 3D: ${p}`);
+  assert(m.barra >= 0.895, `paso entre la barra y el tabique: ${m.barra}`); assert(m.eje >= 0.845, `eje mesa–televisor: ${m.eje}`);
+  for (const n of ['MOB_Sofa', 'MOB_Butaca_sala', 'MOB_Butaca_principal']) assert(m.modelos[n] > 0, `${n} cargado`);
+});
+
 test('el visor rotula la propuesta y ofrece espacios, puntos y leyenda', async t => {
   const page = await open(t);
   assert.match(await page.locator('#propBanner').textContent(), /Propuesta de redistribución – apto 102/);
   assert.equal(await page.locator('#propBanner').isVisible(), true);
   assert.match(await page.locator('#card').textContent(), /2 habitaciones · 2 baños/);
   assert.equal(await page.locator('.hs').count(), 9);
-  assert.equal(await page.locator('.poi').count(), 15);   // incluye barra, ropas junto al acceso y depósito
+  assert.equal(await page.locator('.poi').count(), 15);   // incluye barra, ingreso y ropas junto a los ductos
   assert(!(await page.locator('#rooms').textContent()).match(/estudio/i));
   const stats = await page.evaluate(() => APTO_API.stats);
   assert(stats.categorias.propuesta >= 10 && stats.categorias.verificado >= 1);
@@ -165,9 +199,9 @@ test('caminar: colisiones con tabiques, mobiliario y hojas de puerta de la propu
   await page.evaluate(() => APTO_API.setMode('walk')); await settle(page); await frames(page);
   const s = await page.evaluate(() => APTO_API.state);
   assert.equal(s.mode, 'walk'); assert.equal(s.height, 1.6); assert.equal(s.room, 'social');
-  const f = await page.evaluate(() => ({ cama_p: APTO_API.free(6.9, 2.5), cama_2: APTO_API.free(3.7, 1.7), banquetas: APTO_API.free(1.15, 4.25), columna_ropas: APTO_API.free(0.45, 6.0), peninsula: APTO_API.free(1.0, 4.95), muro_hall: APTO_API.free(5.3, 4.73),
+  const f = await page.evaluate(() => ({ cama_p: APTO_API.free(6.9, 2.5), cama_2: APTO_API.free(3.7, 1.7), banquetas: APTO_API.free(1.15, 4.25), despensa: APTO_API.free(0.35, 6.0), lavadora: APTO_API.free(2.9, 5.6), ingreso: APTO_API.free(1.02, 6.6), peninsula: APTO_API.free(1.0, 4.95), muro_hall: APTO_API.free(5.3, 4.73),
     vano_hab2: APTO_API.free(3.3, 3.76), vano_principal: APTO_API.free(5.33, 4.26), hoja_principal: APTO_API.free(5.45, 3.4), paso_barra: APTO_API.free(2.1, 4.6), eje_balcon: APTO_API.free(2.0, 0.3) }));
-  assert.deepEqual(f, { cama_p: false, cama_2: false, banquetas: false, columna_ropas: false, peninsula: false, muro_hall: false, vano_hab2: true, vano_principal: true, hoja_principal: false, paso_barra: true, eje_balcon: true });
+  assert.deepEqual(f, { cama_p: false, cama_2: false, banquetas: false, despensa: false, lavadora: false, ingreso: true, peninsula: false, muro_hall: false, vano_hab2: true, vano_principal: true, hoja_principal: false, paso_barra: true, eje_balcon: true });
   await page.evaluate(() => APTO_API.goRoom('principal')); await settle(page); await frames(page);
   assert.equal((await page.evaluate(() => APTO_API.state)).room, 'principal');
 });

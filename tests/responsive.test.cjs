@@ -39,7 +39,12 @@ async function open(t,width,height,url=base,extra={}){
 async function enter(page,k=5){
  const floor=page.locator(`polygon[data-tod="day"][data-plane="T2L"][data-k="${k}"]`);
  if(await page.evaluate(()=>matchMedia('(hover: none)').matches)){
-  await floor.tap();await page.locator('#tip').tap();
+  await floor.tap();
+  await page.waitForFunction(()=>+getComputedStyle(document.querySelector('#tip')).opacity>.99);
+  const tip=await page.locator('#tip').boundingBox();
+  if(page.url().startsWith(base+'/'))assert(tip.width<=360&&tip.x>=0&&tip.x+tip.width<=page.viewportSize().width,'selector de pisos compacto y dentro de la pantalla');
+  if(artifactDir)await page.screenshot({path:path.join(artifactDir,`${page.url().startsWith(base+'/')?'after':'before'}-floor-selector-${page.viewportSize().width}x${page.viewportSize().height}.png`)});
+  await page.locator('#tip').tap();
  }else await floor.click();
  await page.locator('#panel').waitFor({state:'visible'});
  await page.waitForFunction(()=>!ORA_API.state.busy&&ORA_API.state.mode==='plan'&&ORA_API.state.state==='int'&&+getComputedStyle(document.querySelector('#panel')).opacity>.99);
@@ -132,4 +137,23 @@ test('ventana amplia de poca altura: salida fija y detalles desplazables',async 
  const page=await open(t,1440,550);await enter(page);await assertSingleExit(page,'#pBack');
  const r=await page.locator('#panel').boundingBox();assert(r.y>=50&&r.y+r.height<=550);
  await isTopTarget(page,'#cta');await isTopTarget(page,'#pRooms li:last-child button');
+});
+
+test('clic real durante el fundido cambia de baño a sala sin activar la salida',async t=>{
+ const page=await open(t,390,844);
+ await enter(page);await page.locator('#panelToggle').click();
+ await page.locator('#pRooms button').nth(2).click();
+ // No esperar a que desaparezca el panel saliente: reproducir el intervalo auditado.
+ await page.waitForFunction(()=>ORA_API.state.mode==='room'&&+getComputedStyle(document.querySelector('#chips')).opacity>=.3);
+ const outgoing=await page.locator('#panel').evaluate(e=>+getComputedStyle(e).opacity);
+ assert(outgoing>0,'el panel anterior todavía está en pleno fundido');
+ const chip=page.locator('#chips button').first();const r=await chip.boundingBox();
+ const point={x:r.x+r.width/2,y:r.y+r.height/2};
+ const receivesClick=await chip.evaluate((e,p)=>document.elementFromPoint(p.x,p.y)?.closest('button')===e,point);
+ await page.mouse.click(point.x,point.y);
+ assert(receivesClick,'Sala y cocina recibe el clic durante el fundido');
+ if(artifactDir)fs.writeFileSync(path.join(artifactDir,'rapid-click-fixed.json'),JSON.stringify({viewport:page.viewportSize(),outgoingOpacity:outgoing,point,receivesClick},null,2));
+ await page.waitForFunction(()=>ORA_API.state.state==='int'&&!ORA_API.state.busy&&document.querySelector('#chips button.on')?.dataset.i==='0');
+ assert.equal(await page.locator('#capT').textContent(),'Sala y cocina');
+ assert.equal(await page.evaluate(()=>ORA_API.state.state),'int');
 });

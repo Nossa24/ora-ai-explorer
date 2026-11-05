@@ -197,7 +197,7 @@ body.mode-amen #hot .pins { display: inline; }
 .p-rooms li button:hover { color: var(--gold-2); padding-left: 4px; }
 .p-rooms li button:hover::after { opacity: 1; transform: none; }
 .p-cta { display: flex; gap: 8px; }
-.btn { flex: 1; display: grid; place-items: center; padding: 12px 8px; text-align: center; text-decoration: none; cursor: pointer; font: 600 8.5px/1.2 var(--sans); letter-spacing: .18em; text-transform: uppercase; border: 1px solid var(--line); transition: .2s; }
+.btn { flex: 1; display: grid; place-items: center; padding: 12px 8px; text-align: center; text-decoration: none; cursor: pointer; font: 600 8.5px/1.2 var(--sans); letter-spacing: .18em; text-transform: uppercase; border: 1px solid var(--line); transition: background .2s, color .2s, border-color .2s; }
 .btn.ghost { background: none; color: var(--ink); }
 .btn.ghost:hover { border-color: var(--gold); }
 .btn.solid { background: var(--gold-2); color: #1a1408; border-color: var(--gold-2); }
@@ -225,7 +225,7 @@ body.mode-amen #hot .pins { display: inline; }
   .nav.open button { display: block; padding: 14px; text-align: left; }
   .nav.open .cta { text-align: center; }
   .media-status { top: 116px; }
-  .tip { left: 16px !important; right: 16px; top: auto !important; bottom: 76px; transform: none !important; min-width: 0; }
+  .tip { left: 16px !important; right: auto; top: auto !important; bottom: 76px; transform: none !important; min-width: 0; width: max-content; max-width: min(360px, calc(100% - 32px)); }
   .dot, .tip-line { display: none; }
   .hint { bottom: 84px; transition: opacity .2s; }
   body.tip-on .hint { opacity: 0; }

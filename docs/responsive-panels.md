@@ -59,3 +59,36 @@ con Safari y en dispositivos físicos sigue siendo recomendable antes de publica
 Los controles de la ficha se agrupan en `panelDetails`, con acciones de salida
 fuera de la región desplazable. Esto permite reutilizar el patrón posteriormente,
 pero esta entrega no modifica ni integra el prototipo ni cambia el área de render.
+
+## Corrección posterior a la auditoría del commit 7e37798
+
+- `hideUI` desactiva inmediatamente la interacción y el foco con `inert`, antes
+  del fundido. `showUI` los restablece. La salida flotante también queda inerte
+  cuando la ficha asume la navegación. El manejador de la salida de la ficha
+  comprueba que el plano esté activo y disponible.
+- Las transiciones de `.btn` se limitan a fondo, color y borde: no retrasan
+  `visibility` ni compiten con la opacidad animada por GSAP. Se conservan las
+  duraciones de las animaciones.
+- El selector de pisos (`#tip`) conserva sus reglas de escritorio. Hasta 900 px
+  usa el ancho de su contenido, limitado a 360 px y al espacio disponible, en
+  lugar de estirarse entre ambos bordes. Conserva fuentes, colores y estructura
+  originales. Las fichas de acceso al apartamento, el menú y los controles de
+  habitaciones mantienen el tratamiento compacto de esta rama.
+- La regresión adicional usa 390×844, animaciones normales y un clic físico con
+  `page.mouse.click` sobre «Sala y cocina» mientras el panel anterior todavía
+  tiene opacidad positiva. No espera a que el botón saliente se oculte. Verifica
+  el destino del clic, la habitación final y que el usuario permanezca dentro.
+  Antes de corregir la implementación, la comprobación del destino falló.
+- La suite suma 33 casos (32 existentes y esta regresión). Las comprobaciones de
+  acceso mediante toque también verifican el ancho y los límites del selector
+  de pisos; con `ORA_VISUAL_DIR` guardan capturas `floor-selector-*`.
+
+Para la segunda auditoría, repetir el clic rápido en 390×844 y revisar las fichas
+plegadas/desplegadas, el selector de pisos y «Tour privado» en 320×568, 390×844,
+768×1024, 900×768 y 1440×900. Safari/iPhone requiere validación física adicional.
+
+Resultado de la ejecución completa posterior a la corrección: **33 aprobadas,
+0 fallidas, 0 omitidas**, en Chromium (aproximadamente 129 segundos). La evidencia
+registró opacidad saliente 0,2153 y recepción correcta del clic por el control de
+sala. Recursos audiovisuales, configuración comercial y rama experimental sin
+modificaciones. No se realizó fusión ni publicación.

@@ -431,7 +431,7 @@
     cancelStopper();
     vid.pause();
     busy = true;
-    gsap.to([el.panel, el.chips, el.cap, el.back], { autoAlpha: 0, duration: .25, overwrite: 'auto' });
+    hideUI([el.panel, el.chips, el.cap, el.back]);
     const reverse = () => {
       if (cur !== session) return;
       document.body.classList.remove('is-int'); document.body.classList.add('is-ext');
@@ -591,8 +591,15 @@
     gsap.to(el.snap, { opacity: 0, duration: reduce ? 0 : fade, ease: 'power1.inOut' });
   }
 
-  function showUI(list) { gsap.to(list, { autoAlpha: 1, duration: .5, ease: 'power1.out', overwrite: 'auto' }); }
-  function hideUI(list) { gsap.to(list, { autoAlpha: 0, duration: .25, overwrite: 'auto' }); }
+  function showUI(list) {
+    list.forEach(node => { node.inert = false; });
+    gsap.to(list, { autoAlpha: 1, duration: .5, ease: 'power1.out', overwrite: 'auto' });
+  }
+  function hideUI(list) {
+    // Retirar clics y foco inmediatamente, conservando el fundido visual.
+    list.forEach(node => { node.inert = true; });
+    gsap.to(list, { autoAlpha: 0, duration: .25, overwrite: 'auto' });
+  }
 
   function onPlan() {
     if (!cur || cur.exiting) return;
@@ -604,6 +611,7 @@
     el.backTxt.textContent = 'Volver a la torre';
     // El panel ya contiene la salida: evita duplicarla y tapar las habitaciones.
     gsap.killTweensOf(el.back);
+    el.back.inert = true;
     gsap.set(el.back, { autoAlpha: 0 });
     gsap.set($('#pBack'), { autoAlpha: 1 });
     showUI([el.panel]);
@@ -656,7 +664,9 @@
     if (cur.mode === 'room' && !cur.busy) goPlan(); else exitToTower();
   }
   el.back.addEventListener('click', onBack);
-  $('#pBack').addEventListener('click', () => exitToTower());
+  $('#pBack').addEventListener('click', () => {
+    if (state === 'int' && cur?.mode === 'plan' && !cur.busy && !el.panel.inert) exitToTower();
+  });
   $('#cta').addEventListener('click', e => { if (C.brand.cta.href === '#') e.preventDefault(); });
   $('#pPlan').addEventListener('click', e => { if (C.brand.cta.href === '#') e.preventDefault(); });
 

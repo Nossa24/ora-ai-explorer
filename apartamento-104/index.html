@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ORA AI · Apartamento 104 · Torre 1</title>
+<meta name="theme-color" content="#050a14">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/apto.css">
+</head>
+<body class="is-loading">
+<div id="app">
+  <canvas id="scene" tabindex="0" aria-label="Apartamento 104 en 3D. Arrastra para mirar; usa los controles para recorrerlo."></canvas>
+  <div id="labels" aria-hidden="true"></div>
+  <div id="hotspots" role="group" aria-label="Espacios del apartamento"></div>
+
+  <header class="bar">
+    <a class="brand" href="../" aria-label="ORA AI · volver al explorador de torres">
+      <span class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M10 1 19 10 10 19 1 10Z" fill="none" stroke="currentColor"/><circle cx="10" cy="10" r="3.2" fill="none" stroke="currentColor"/></svg></span>
+      <span class="brand-name">ORA AI</span>
+      <span class="brand-sep"></span>
+      <span class="brand-tag">Torre 1 · Apartamento 104</span>
+    </a>
+    <a class="cta" id="cta" href="#">Tour privado</a>
+  </header>
+
+  <!-- ficha del apartamento: misma familia visual que la tarjeta de piso de Nicolás -->
+  <section class="card" id="card" aria-label="Apartamento 104">
+    <span class="num"><small>APTO</small><b>104</b></span><i class="sep"></i>
+    <span class="body">
+      <span class="tw">Torre 1 · Piso tipo 1–20</span>
+      <strong>3 alcobas · 2 baños</strong>
+      <span class="sp">Área rotulada en plano: 60,01 m²</span>
+      <em class="chip" title="Muros, vanos y espacios tomados del DWG">Planta verificada</em>
+    </span>
+  </section>
+
+  <p class="caption" id="caption" aria-live="polite"><small id="captionK"></small><span id="captionT"></span></p>
+
+  <aside class="panel" id="panel" aria-label="Opciones">
+    <button type="button" class="panel-toggle" id="panelToggle" aria-expanded="false" aria-controls="panelBody" aria-label="Ver opciones">Opciones</button>
+    <div id="panelBody">
+      <div class="p-k">Espacios · área neta</div>
+      <ul class="rooms" id="rooms"></ul>
+      <div class="p-k">Acabados ilustrativos</div>
+      <div class="swatches" id="floors" aria-label="Piso"></div>
+      <div class="swatches" id="walls" aria-label="Muros"></div>
+      <div class="p-k">Capas</div>
+      <label class="switch"><input type="checkbox" id="layerFurniture" checked> Mobiliario de presentación</label>
+      <label class="switch"><input type="checkbox" id="layerDims"> Cotas del plano</label>
+      <label class="switch"><input type="checkbox" id="layerVerified"> Solo arquitectura verificada</label>
+      <p class="note">Planta, muros, vanos y aparatos: DWG. Alturas, acabados y muebles: ilustrativos. <a href="MEDIDAS.md" target="_blank" rel="noopener">Medidas</a></p>
+    </div>
+  </aside>
+
+  <nav class="modes" id="modes" aria-label="Modo de recorrido">
+    <button type="button" data-mode="orbit" class="on" aria-pressed="true">Maqueta</button>
+    <button type="button" data-mode="tour" aria-pressed="false">▶ Recorrido</button>
+    <button type="button" data-mode="walk" aria-pressed="false">Caminar</button>
+  </nav>
+
+  <div class="walkpad" id="walkpad" hidden aria-label="Desplazamiento">
+    <button type="button" data-move="f" aria-label="Avanzar">↑</button>
+    <div><button type="button" data-move="l" aria-label="Girar a la izquierda">↺</button><button type="button" data-move="b" aria-label="Retroceder">↓</button><button type="button" data-move="r" aria-label="Girar a la derecha">↻</button></div>
+  </div>
+  <p class="hint" id="hint"><i></i><span id="hintTxt">Arrastra para girar la maqueta · toca un punto para entrar</span></p>
+
+  <div class="loading" id="loading" role="status"><span>Preparando el apartamento…</span></div>
+  <p class="error" id="error" role="alert" hidden>No se pudo iniciar la vista 3D. Prueba con un navegador que tenga aceleración gráfica activada.</p>
+</div>
+<script src="dist/datos.js"></script>
+<script src="dist/app.js"></script>
+</body>
+</html>

@@ -28,13 +28,13 @@
       <span class="brand-sep"></span>
       <span class="brand-tag" data-brand="tag">Explorador de torres</span>
     </a>
-    <button type="button" class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="nav">Menú</button>
+    <button type="button" class="menu-toggle" id="menuToggle" aria-label="Menú" aria-expanded="false" aria-controls="nav">Menú</button>
     <nav class="nav" id="nav" aria-label="Secciones">
       <button type="button" data-mode="res" class="on">Residencias</button>
       <button type="button" data-mode="pent">Penthouses</button>
       <button type="button" data-mode="amen">Amenidades</button>
-      <a class="cta" id="cta" href="#">Tour privado</a>
     </nav>
+    <a class="cta" id="cta" href="#">Tour privado</a>
   </header>
 
   <!-- ===================== EXTERIOR ===================== -->
@@ -86,6 +86,8 @@
     <aside class="panel" id="panel" aria-label="Residencia">
       <div class="p-k" id="pK"></div>
       <h2 class="p-t" id="pT"></h2>
+      <button type="button" class="panel-toggle" id="panelToggle" aria-expanded="false" aria-controls="panelDetails" aria-label="Ver detalles">Detalles</button>
+      <div id="panelDetails">
       <dl class="p-meta">
         <div><dt>Habitaciones</dt><dd id="pBeds"></dd></div>
         <div><dt>Baños</dt><dd id="pBaths"></dd></div>
@@ -93,6 +95,7 @@
       </dl>
       <p class="p-desc" id="pDesc"></p>
       <ul class="p-rooms" id="pRooms"></ul>
+      </div>
       <div class="p-cta">
         <button type="button" class="btn ghost" id="pBack">Volver a la torre</button>
         <a class="btn solid" id="pPlan" href="#">Solicitar plano</a>

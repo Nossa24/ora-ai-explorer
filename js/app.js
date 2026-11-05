@@ -22,7 +22,7 @@
     dot: $('#dot'), line: $('#tipLine'), tip: $('#tip'), hint: $('#hintTxt'), tod: $('#tod'),
     int: $('#int'), fx: $('#fx'), vwrap: $('#vwrap'), vid: $('#vid'), snap: $('#snap'),
     back: $('#back'), backTxt: $('#backTxt'), cap: $('#cap'), capK: $('#capK'), capT: $('#capT'),
-    chips: $('#chips'), panel: $('#panel'),
+    chips: $('#chips'), panel: $('#panel'), panelDetails: $('#panelDetails'), panelToggle: $('#panelToggle'),
     nav: $('#nav'), menuToggle: $('#menuToggle'), mediaStatus: $('#mediaStatus'), loading: $('#mediaLoading'),
   };
 
@@ -92,6 +92,7 @@
           polys[t][plane.id][k] = {
             node, pts, c, plane,
             minX: Math.min(...pts.map(p => p[0])), maxX: Math.max(...pts.map(p => p[0])),
+            minY: Math.min(...pts.map(p => p[1])), maxY: Math.max(...pts.map(p => p[1])),
           };
           g.append(node);
         }
@@ -175,7 +176,7 @@
     positionTip(h);
   }
   function positionTip(h) {
-    if (innerWidth <= 900) return;
+    if (innerWidth <= 900) { positionTipCompact(h); return; }
     const vw = innerWidth, vh = innerHeight;
     const p = h.poly;
     const [sx, sy] = toScreen(p.c[0], p.c[1]);
@@ -193,6 +194,30 @@
     el.dot.style.transform = `translate(${sx}px,${sy}px)`;
     el.dot.style.opacity = 1; el.line.style.opacity = 1;
   }
+  // Pantallas estrechas: la misma tarjeta, anclada encima (o debajo) del piso elegido,
+  // unida a él por un trazo corto, como en escritorio. Nunca invade la barra ni los controles.
+  function positionTipCompact(h) {
+    const vw = innerWidth, vh = innerHeight;
+    const p = h.poly;
+    const [sx, sy] = toScreen(p.c[0], p.c[1]);
+    const top = toScreen(0, p.minY)[1], bottom = toScreen(0, p.maxY)[1];
+    const tw = el.tip.offsetWidth, th = el.tip.offsetHeight;
+    const gap = 26, minTop = 84, maxBottom = vh - 70;
+    let ty = top - gap - th, edge = 'b';
+    if (ty < minTop) { ty = bottom + gap; edge = 't'; }
+    if (ty + th > maxBottom) { ty = clamp(top - gap - th, minTop, maxBottom - th); edge = ty + th <= sy ? 'b' : 't'; }
+    const tx = clamp(sx - tw / 2, 12, vw - tw - 12);
+    el.tip.style.left = tx + 'px';
+    el.tip.style.top = ty + 'px';
+    const lx = clamp(sx, tx + 18, tx + tw - 18), ly = edge === 'b' ? ty + th : ty;
+    const dx = lx - sx, dy = ly - sy;
+    el.line.style.width = Math.hypot(dx, dy) + 'px';
+    el.line.style.transform = `translate(${sx}px,${sy}px) rotate(${Math.atan2(dy, dx)}rad)`;
+    el.dot.style.transform = `translate(${sx}px,${sy}px)`;
+    // Si el piso quedó fuera de la pantalla (se arrastró la fachada), no se dibuja un trazo al vacío.
+    const onScreen = sx >= 0 && sx <= vw;
+    el.dot.style.opacity = onScreen ? 1 : 0; el.line.style.opacity = onScreen ? 1 : 0;
+  }
 
   // ---------------------------------------------------------------- recorrido automático (modo escaparate)
   const SCAN = {
@@ -209,9 +234,17 @@
       })
       : SCAN.res;
     if (!seq.length) return;
-    const [id, k] = seq[scanI++ % seq.length];
-    const p = polys[tod][id] && polys[tod][id][k];
-    if (p) setHover(p.node);
+    // En pantallas estrechas la fachada no cabe completa: el recorrido solo señala pisos
+    // que están a la vista, para que la tarjeta siempre acompañe a un piso visible.
+    for (let tries = 0; tries < seq.length; tries++) {
+      const [id, k] = seq[scanI++ % seq.length];
+      const p = polys[tod][id] && polys[tod][id][k];
+      if (!p) continue;
+      const sx = toScreen(p.c[0], 0)[0];
+      if (sx < 24 || sx > innerWidth - 24) continue;
+      setHover(p.node);
+      break;
+    }
     scanTimer = setTimeout(scanStep, 1050);
   }
   function startScan(delay = 900) {
@@ -307,6 +340,24 @@
     el.menuToggle.hidden = interior;
     el.menuToggle.inert = interior;
   }
+  const sheetQuery = matchMedia('(max-width: 600px), (max-height: 500px)');
+  let panelExpanded = false;
+  function syncPanel() {
+    const expanded = !sheetQuery.matches || panelExpanded;
+    if (!expanded && el.panelDetails.contains(document.activeElement)) el.panelToggle.focus();
+    el.panelDetails.hidden = !expanded;
+    el.panelToggle.setAttribute('aria-expanded', String(expanded));
+    // Rótulo corto y estable; el estado lo comunican aria-expanded y la flecha.
+    el.panelToggle.setAttribute('aria-label', expanded ? 'Ocultar detalles' : 'Ver detalles');
+  }
+  el.panelToggle.addEventListener('click', () => {
+    if (!cur || cur.exiting || cur.mode !== 'plan') return;
+    panelExpanded = !panelExpanded;
+    syncPanel();
+  });
+  sheetQuery.addEventListener('change', () => { panelExpanded = false; syncPanel(); });
+  syncPanel();
+
   function setLoading(loading) {
     el.loading.hidden = !loading;
     el.int.setAttribute('aria-busy', String(loading));
@@ -381,9 +432,16 @@
     const D = reduce ? 0.01 : 1;
     const zoomT = 1.15 * D, split = 1.05 * D;
 
+    // El interior queda operativo cuando las dos mitades de la fachada ya despejaron la
+    // pantalla, no al terminar su último milímetro: la ficha aparece al ritmo del original.
+    const settle = () => {
+      if (tl.reversed() || state === 'int' || !cur || cur.exiting) return;
+      busy = false; state = 'int'; document.body.classList.add('is-int'); document.body.classList.remove('is-ext');
+      if (cur.planReady) onPlan();
+    };
     tl = gsap.timeline({
       paused: true,
-      onComplete: () => { busy = false; state = 'int'; document.body.classList.add('is-int'); document.body.classList.remove('is-ext'); },
+      onComplete: settle,
       onReverseComplete: afterExit,
     });
     tl.to(view, { tx, ty, s: s1, duration: zoomT, ease: 'power3.inOut', onUpdate: applyView }, 0)
@@ -398,7 +456,8 @@
       .to(parts.bot, { y: vh * .9, duration: 1.2 * D, ease: 'power3.inOut' }, 'split')
       .to(parts.band, { autoAlpha: 0, duration: .4 * D, ease: 'power1.out' }, 'split')
       .set(el.fx, { autoAlpha: 0 }, 'split+=' + (1.25 * D))
-      .call(() => { if (!tl.reversed()) startInterior(); }, null, 'split+=' + (0.12 * D));
+      .call(() => { if (!tl.reversed()) startInterior(); }, null, 'split+=' + (0.12 * D))
+      .call(settle, null, 'split+=' + (0.55 * D));
     tl.timeScale(1).play(0);
   }
 
@@ -411,7 +470,7 @@
     cancelStopper();
     vid.pause();
     busy = true;
-    gsap.to([el.panel, el.chips, el.cap, el.back], { autoAlpha: 0, duration: .25, overwrite: 'auto' });
+    hideUI([el.panel, el.chips, el.cap, el.back]);
     const reverse = () => {
       if (cur !== session) return;
       document.body.classList.remove('is-int'); document.body.classList.add('is-ext');
@@ -490,7 +549,10 @@
   }
   vid.addEventListener('error', () => { if (cur) mediaFailure(cur); });
   function prepareInterior() {
+    panelExpanded = false; syncPanel();
     gsap.set([el.panel, el.chips, el.cap, el.back], { autoAlpha: 0 });
+    gsap.set($('#pBack'), { autoAlpha: 1 });
+    gsap.set(el.back, { autoAlpha: 1 });
     const u = cur.unit;
     // panel
     $('#pK').textContent = `PISO ${cur.h.floorNo} · ${u.status}`;
@@ -513,6 +575,9 @@
       const error = await session.ready;
       if (error) throw error;
       if (session.controller.signal.aborted) return;
+      // El aviso de carga se retira con el primer cuadro: no debe quedar sobre el plano visible.
+      if (vid.readyState >= 2) setLoading(false);
+      else vid.addEventListener('loadeddata', () => { if (cur === session && !session.exiting) setLoading(false); }, { once: true });
       // Los metadatos bastan para buscar un cuadro aunque iOS restrinja play().
       vid.currentTime = 0;
       await playUntil(session.unit.plan.hold);
@@ -568,14 +633,30 @@
     gsap.to(el.snap, { opacity: 0, duration: reduce ? 0 : fade, ease: 'power1.inOut' });
   }
 
-  function showUI(list) { gsap.to(list, { autoAlpha: 1, duration: .5, ease: 'power1.out', overwrite: 'auto' }); }
-  function hideUI(list) { gsap.to(list, { autoAlpha: 0, duration: .25, overwrite: 'auto' }); }
+  function showUI(list) {
+    list.forEach(node => { node.inert = false; });
+    gsap.to(list, { autoAlpha: 1, duration: .5, ease: 'power1.out', overwrite: 'auto' });
+  }
+  function hideUI(list) {
+    // Retirar clics y foco inmediatamente, conservando el fundido visual.
+    list.forEach(node => { node.inert = true; });
+    gsap.to(list, { autoAlpha: 0, duration: .25, overwrite: 'auto' });
+  }
 
   function onPlan() {
+    if (!cur || cur.exiting) return;
+    cur.planReady = true;
+    // No mostrar controles que todavía descartarían un clic durante la transición.
+    if (state !== 'int' || busy) return;
     setLoading(false);
     cur.mode = 'plan'; cur.busy = false;
     el.backTxt.textContent = 'Volver a la torre';
-    showUI([el.panel, el.back]);
+    // El panel ya contiene la salida: evita duplicarla y tapar las habitaciones.
+    gsap.killTweensOf(el.back);
+    el.back.inert = true;
+    gsap.set(el.back, { autoAlpha: 0 });
+    gsap.set($('#pBack'), { autoAlpha: 1 });
+    showUI([el.panel]);
   }
   function enterRoom(i) {
     const u = cur.unit;
@@ -593,6 +674,9 @@
     const session = cur;
     cur.busy = true;
     const u = cur.unit;
+    gsap.set($('#pBack'), { autoAlpha: 0 });
+    el.backTxt.textContent = 'Volver a la torre';
+    showUI([el.back]);
     hideUI([el.panel, el.cap]);
     try {
       if (cur.mode === 'plan' && i === 0 && !cur.staticPlayback) {
@@ -608,6 +692,9 @@
     if (!cur || cur.busy) return;
     const session = cur;
     cur.busy = true;
+    gsap.set($('#pBack'), { autoAlpha: 0 });
+    el.backTxt.textContent = 'Volver a la torre';
+    showUI([el.back]);
     hideUI([el.cap, el.chips]);
     try {
       await dissolve(cur.unit.plan.hold, { fade: .5 });
@@ -619,7 +706,9 @@
     if (cur.mode === 'room' && !cur.busy) goPlan(); else exitToTower();
   }
   el.back.addEventListener('click', onBack);
-  $('#pBack').addEventListener('click', () => exitToTower());
+  $('#pBack').addEventListener('click', () => {
+    if (state === 'int' && cur?.mode === 'plan' && !cur.busy && !el.panel.inert) exitToTower();
+  });
   $('#cta').addEventListener('click', e => { if (C.brand.cta.href === '#') e.preventDefault(); });
   $('#pPlan').addEventListener('click', e => { if (C.brand.cta.href === '#') e.preventDefault(); });
 

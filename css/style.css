@@ -38,7 +38,7 @@ body.is-int #ext { visibility: hidden; }
 .brand-name { font: 500 15px/1 var(--serif); letter-spacing: .36em; }
 .brand-sep { width: 1px; height: 16px; background: var(--line); }
 .brand-tag { font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--mute); white-space: nowrap; }
-.nav { display: flex; align-items: center; gap: clamp(14px, 2.2vw, 30px); }
+.nav { margin-left: auto; display: flex; align-items: center; gap: clamp(14px, 2.2vw, 30px); }
 .nav button {
   background: none; border: 0; border-bottom: 1px solid transparent; color: var(--mute);
   font: 500 9.5px/1 var(--sans); letter-spacing: .24em; text-transform: uppercase; padding: 8px 0; cursor: pointer;
@@ -51,11 +51,13 @@ body.is-int #ext { visibility: hidden; }
   transition: background .2s;
 }
 .cta:hover { background: #fff1c9; }
+.bar > .cta { margin-left: calc(clamp(14px, 2.2vw, 30px) - 16px); }
 
 .menu-toggle { display: none; }
 .nav[hidden], .menu-toggle[hidden] { display: none; }
-.media-loading:not([hidden]) { position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 18px; background: rgba(5, 10, 20, .86); color: var(--gold-2); font: 500 12px/1.5 var(--sans); letter-spacing: .16em; }
-.media-loading::before { content: ''; width: 28px; height: 28px; border: 1px solid var(--line); border-top-color: var(--gold-2); border-radius: 50%; animation: loading-spin 1s linear infinite; }
+.media-loading:not([hidden]) { position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 16px; background: radial-gradient(60% 50% at 50% 50%, rgba(5, 10, 20, .55), rgba(5, 10, 20, .2)); color: var(--gold-2); font: 500 9.5px/1.5 var(--sans); letter-spacing: .24em; text-transform: uppercase; animation: loading-in .45s ease .6s both; }
+@keyframes loading-in { from { opacity: 0; } }
+.media-loading::before { content: ''; width: 22px; height: 22px; border: 1px solid var(--line); border-top-color: var(--gold-2); border-radius: 50%; animation: loading-spin 1s linear infinite; }
 @keyframes loading-spin { to { transform: rotate(360deg); } }
 .back { z-index: 4; }
 .media-status { position: absolute; z-index: 35; left: var(--pad); right: var(--pad); top: 86px; margin: 0; padding: 14px 18px; color: var(--ink); background: var(--glass); border: 1px solid var(--gold); font-size: 13px; }
@@ -196,11 +198,15 @@ body.mode-amen #hot .pins { display: inline; }
 .p-rooms li button:hover { color: var(--gold-2); padding-left: 4px; }
 .p-rooms li button:hover::after { opacity: 1; transform: none; }
 .p-cta { display: flex; gap: 8px; }
-.btn { flex: 1; display: grid; place-items: center; padding: 12px 8px; text-align: center; text-decoration: none; cursor: pointer; font: 600 8.5px/1.2 var(--sans); letter-spacing: .18em; text-transform: uppercase; border: 1px solid var(--line); transition: .2s; }
+.btn { flex: 1; display: grid; place-items: center; padding: 12px 8px; text-align: center; text-decoration: none; cursor: pointer; font: 600 8.5px/1.2 var(--sans); letter-spacing: .18em; text-transform: uppercase; border: 1px solid var(--line); transition: background .2s, color .2s, border-color .2s; }
 .btn.ghost { background: none; color: var(--ink); }
 .btn.ghost:hover { border-color: var(--gold); }
 .btn.solid { background: var(--gold-2); color: #1a1408; border-color: var(--gold-2); }
 .btn.solid:hover { background: #fff1c9; }
+
+.panel-toggle { display: none; }
+#panelDetails { display: contents; }
+#panelDetails[hidden] { display: none; }
 
 /* ---------- capa de transición ---------- */
 #fx { position: absolute; inset: 0; z-index: 6; pointer-events: none; visibility: hidden; overflow: hidden; }
@@ -208,23 +214,43 @@ body.mode-amen #hot .pins { display: inline; }
 #fx .clone { position: absolute; left: 0; top: 0; width: 1672px; height: 941px; transform-origin: 0 0; }
 #fx .clone img { display: block; width: 1672px; height: 941px; }
 
-/* ---------- móvil ---------- */
+/* ---------- móvil y tableta ----------
+   Misma identidad que escritorio: tarjetas pequeñas de vidrio, tipografía espaciada,
+   la arquitectura como protagonista. Nada de franjas de borde a borde. */
 @media (max-width: 900px) {
   .brand-sep, .brand-tag { display: none; }
-  .menu-toggle { display: block; margin-left: auto; padding: 10px 14px; border: 1px solid var(--line); background: var(--glass); color: var(--gold-2); cursor: pointer; }
-  .nav { gap: 0; }
+  .menu-toggle:not([hidden]) {
+    display: flex; align-items: center; gap: 9px; margin-left: auto; height: 30px; padding: 0 12px;
+    border: 1px solid var(--line); background: rgba(5, 9, 16, .5); color: var(--ink); cursor: pointer;
+    font: 500 9.5px/1 var(--sans); letter-spacing: .24em; text-transform: uppercase;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: border-color .2s;
+  }
+  .menu-toggle::before { content: ''; width: 11px; height: 1px; background: var(--gold-2); box-shadow: 0 -3.5px 0 var(--gold-2), 0 3.5px 0 var(--gold-2); }
+  .menu-toggle:hover, .menu-toggle[aria-expanded="true"] { border-color: var(--gold); }
+  .nav { gap: 0; margin-left: 0; }
+  .nav:not(.open) { display: none; }
+  .bar > .cta { margin-left: 0; }
   .nav button { display: none; }
-  .nav.open { position: absolute; top: 64px; right: var(--pad); min-width: 210px; padding: 12px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; border: 1px solid var(--line); background: var(--glass); backdrop-filter: blur(12px); }
-  .nav.open button { display: block; padding: 14px; text-align: left; }
-  .nav.open .cta { text-align: center; }
-  .media-status { top: 116px; }
-  .tip { left: 16px !important; right: 16px; top: auto !important; bottom: 76px; transform: none !important; min-width: 0; }
-  .dot, .tip-line { display: none; }
+  .nav.open {
+    position: absolute; top: 60px; right: var(--pad); min-width: 196px; padding: 6px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 0;
+    border: 1px solid rgba(255, 255, 255, .1); background: rgba(5, 9, 16, .86); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  .nav.open button { display: block; padding: 14px 0; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+  .nav.open button:last-child { border-bottom: 0; }
+  .nav.open button.on { color: var(--gold-2); }
+  .media-status { top: 84px; }
+  /* selector de pisos: la tarjeta de escritorio, un poco más ceñida, anclada al piso */
+  .tip { min-width: 0; width: max-content; max-width: calc(100vw - 24px); gap: 12px; padding: 10px 14px 10px 12px; }
+  .tip .num { min-width: 34px; }
+  .tip .num b { font-size: 29px; }
+  .tip strong { font-size: 19px; }
+  .tip .sp { font-size: 10.5px; }
+  .tip .go { margin-left: 2px; }
   .hint { bottom: 84px; transition: opacity .2s; }
   body.tip-on .hint { opacity: 0; }
   .legal { display: none; }
-  #vid, #snap { object-position: 50% 14%; }
-  .panel { padding: 16px 18px 16px; }
+  #vid, #snap { object-fit: contain; object-position: 50% 14%; }
+  .panel { padding: 16px 18px 16px; width: 256px; max-height: calc(100svh - 116px); overflow: auto; }
   .p-t { font-size: 28px; margin: 6px 0 10px; }
   .p-meta { margin-bottom: 10px; padding-bottom: 10px; }
   .p-desc { display: none; }
@@ -233,11 +259,74 @@ body.mode-amen #hot .pins { display: inline; }
   .tod { bottom: 18px; }
   .back { bottom: 74px; }
   .cap { left: var(--pad); bottom: 128px; }
-  .chips { left: var(--pad); right: var(--pad); bottom: 18px; overflow-x: auto; }
-  .chips button { flex: 1; white-space: nowrap; }
-  .panel { left: var(--pad); right: var(--pad); top: auto; bottom: 18px; width: auto; transform: none; max-height: 56vh; overflow: auto; }
-  #vid, #snap { object-fit: contain; }
+  .chips { left: var(--pad); right: var(--pad); bottom: 18px; }
+  .chips button {
+    flex: 1 1 0; min-width: 0; min-height: 40px; display: flex; align-items: center; justify-content: center;
+    padding: 9px 8px; white-space: normal; text-align: center; line-height: 1.35; letter-spacing: .16em;
+  }
+}
+/* Vertical: el video ocupa el espacio libre entre la barra y los controles, centrado,
+   en lugar de quedar pegado arriba con un vacío negro debajo. */
+@media (max-width: 600px) {
+  .bar { gap: 10px; }
+  .brand-name, .cta { white-space: nowrap; }
+  /* en teléfonos el menú es solo su marca de tres trazos; el nombre sigue disponible para lectores de pantalla */
+  .menu-toggle:not([hidden]) { width: 30px; padding: 0; justify-content: center; font-size: 0; letter-spacing: 0; gap: 0; }
+}
+@media (max-width: 900px) and (orientation: portrait) {
+  #int { --media-top: 76px; --media-reserve: 186px; }
+  #vid, #snap { top: var(--media-top); height: calc(100% - var(--media-top) - var(--media-reserve)); object-position: 50% 50%; }
+}
+@media (min-width: 601px) and (max-width: 900px) and (orientation: portrait) {
+  #int { --media-reserve: 344px; }
+  .panel { top: auto; bottom: 18px; transform: none; width: 272px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .vwrap.kb, #hot .fl.pent-hint, .hint i, #hot .pin circle.r, .media-loading::before { animation: none; }
+  .vwrap.kb, #hot .fl.pent-hint, .hint i, #hot .pin circle.r, .media-loading::before, .media-loading:not([hidden]) { animation: none; }
+}
+
+/* La tarjeta de escritorio conserva sus reglas originales. Las ventanas intermedias
+   mantienen una tarjeta lateral, no una franja de ancho completo. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .panel { max-height: calc(100svh - 116px); overflow: auto; }
+}
+/* Teléfonos y ventanas bajas: ficha discreta que se despliega a voluntad; la salida
+   y «Solicitar plano» nunca salen de ella. */
+@media (max-width: 600px), (max-height: 500px) {
+  .panel {
+    display: flex; flex-direction: column; left: var(--pad); right: var(--pad);
+    top: auto; bottom: max(16px, env(safe-area-inset-bottom)); width: auto;
+    transform: none; max-height: min(55svh, calc(100svh - 100px)); overflow: hidden;
+    padding: 14px 16px 14px;
+  }
+  .p-k, .p-t, .p-cta { flex-shrink: 0; }
+  .p-k, .p-t { padding-right: 96px; }
+  .p-t { font-size: 26px; margin: 7px 0 12px; }
+  .panel-toggle {
+    display: flex; align-items: center; gap: 8px; position: absolute; right: 16px; top: 13px; height: 28px; padding: 0 10px;
+    border: 1px solid var(--line); background: none; color: var(--gold-2); cursor: pointer;
+    font: 600 8px/1 var(--sans); letter-spacing: .2em; text-transform: uppercase; transition: border-color .2s;
+  }
+  .panel-toggle::before { content: ''; position: absolute; inset: -8px -6px; }
+  .panel-toggle::after { content: ''; width: 5px; height: 5px; margin-top: -3px; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(45deg); transition: transform .25s, margin .25s; }
+  .panel-toggle[aria-expanded="true"]::after { margin-top: 3px; transform: rotate(-135deg); }
+  .panel-toggle:hover { border-color: var(--gold); }
+  #panelDetails { display: block; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  #panelDetails[hidden] { display: none; }
+  .p-meta { margin-top: 0; }
+  .p-rooms li button { min-height: 40px; }
+  .p-cta { gap: 8px; }
+  .p-cta .btn { min-height: 40px; }
+}
+@media (min-width: 601px) and (max-height: 500px) {
+  .panel { left: auto; width: min(300px, calc(100% - 2 * var(--pad))); bottom: 12px; max-height: calc(100svh - 100px); }
+  .p-k, .p-t { padding-right: 96px; }
+  .p-t { font-size: 24px; margin: 6px 0 10px; }
+}
+/* Si falta altura, solo los detalles se desplazan: la salida no sale de la tarjeta. */
+@media (min-width: 601px) and (max-width: 1100px) and (min-height: 501px),
+       (min-width: 901px) and (min-height: 501px) and (max-height: 600px) {
+  .panel { display: flex; flex-direction: column; max-height: calc(100svh - 116px); overflow: hidden; }
+  .p-k, .p-t, .p-cta { flex-shrink: 0; }
+  #panelDetails { display: block; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 }

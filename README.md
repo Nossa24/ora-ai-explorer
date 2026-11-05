@@ -91,3 +91,16 @@ El menú principal se oculta y queda fuera del foco durante el recorrido, y se r
 al terminar la animación de regreso. El CTA del panel y su configuración no cambian.
 Las restricciones de autoplay se simulan en las pruebas de escritorio y móvil;
 esto no sustituye una comprobación en un dispositivo iOS físico.
+
+## Ficha responsive
+
+Las ventanas intermedias conservan una tarjeta lateral compacta. En teléfonos,
+«Ver detalles» abre la información y las habitaciones; la salida permanece visible.
+«Tour privado» se mantiene disponible dentro del recorrido. Consulta el
+[comportamiento y las pruebas visuales](docs/responsive-panels.md).
+
+## Fidelidad visual con el original
+
+La ficha y el selector de escritorio son idénticos al demo de Nicolás; en móvil y tableta
+se usa la misma tarjeta anclada al piso elegido y fichas compactas. Detalles, pruebas y el
+iniciador para Mac: [docs/fidelidad-visual.md](docs/fidelidad-visual.md).

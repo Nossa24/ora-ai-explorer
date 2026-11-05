@@ -33,7 +33,7 @@ La estética por defecto del visor es «Monocromática elegante»: blanco, grise
 | Habitación principal | 11,39 m² | Cama de 1,60 m, mesas de noche, butaca junto a la ventana |
 | Baño principal (privado) | 4,70 m² | Ducha de 1,78 m con mampara, doble lavamanos y sanitario suspendido. Se entra desde la habitación |
 | Vestier | 3,06 m² | Clósets en L y espejo de cuerpo entero. Se entra desde la habitación |
-| Habitación 2 | 8,88 m² | Cama doble, armario de 1,40 m y escritorio bajo la ventana |
+| Habitación 2 | 8,88 m² | Cama doble, mesas de noche suspendidas, armario corredizo de 1,40 m y cómoda baja bajo la ventana (dormitorio completo, no estudio) |
 | Baño social | 2,73 m² | Ducha, sanitario suspendido y lavamanos. Sirve a la habitación 2 y a la zona social |
 | Ropas | 1,11 m² | Lavadora-secadora apilada, lavadero y almacenamiento, junto a los ductos. Puerta corrediza oculta en el muro, al ras y con su acabado, desde el hall |
 | Hall de alcobas | 2,12 m² | Reparte las dos habitaciones, el baño social y la zona de ropas |
@@ -83,7 +83,7 @@ ducto D1, circuito eléctrico dedicado e impermeabilización del piso del cuarto
 
 1. **Dos habitaciones de verdad en lugar de «2 + estudio».**
    - La alcoba pequeña del plano original (2,50 × 2,52 m, 6,30 m²) pasa a ser una habitación de
-     8,88 m² con cama doble, armario y escritorio.
+     8,88 m² con cama doble, armario y cómoda.
    - El estudio sin ventana desaparece. Su área se usa para la suite principal y para los servicios.
 2. **Suite principal.**
    - La habitación principal tiene ahora baño privado (4,70 m²) y vestier (3,06 m²), con acceso solo
@@ -115,6 +115,8 @@ ducto D1, circuito eléctrico dedicado e impermeabilización del piso del cuarto
      por ducto.
 
 ## Lo que hay que validar antes de ofrecerla
+
+El registro completo y actualizado está en [PENDIENTES.md](PENDIENTES.md).
 
 1. **Sistema estructural.**
    - Si los muros interiores de la torre son estructurales (por ejemplo, muros de concreto de sistema
@@ -150,12 +152,17 @@ ducto D1, circuito eléctrico dedicado e impermeabilización del piso del cuarto
 - **Estética por defecto «Monocromática elegante»:** microcemento gris perla, muros blancos, cocina en
   negro mate con mármol gris, baños en piedra gris y negro mate. Las otras tres propuestas de acabados
   siguen disponibles.
-- **Renderización:**
-  - sofá y butacas detallados (modelos de terceros con licencia abierta, ver `modelo/muebles/CREDITOS.md`);
-  - camas con duvet, almohadas y cabecero tapizado de canales; banquetas tapizadas;
-  - telas con brillo de terciopelo y piedras pulidas con capa transparente (materiales físicos);
-  - mapeo de tonos neutro (Khronos PBR Neutral) para colores de material fieles;
-  - exterior conceptual con setos orgánicos y bruma clara, como una vista fotográfica desde el interior.
+- **Presentación visual (ver `INFORME-PRESENTACION.md`):**
+  - estética «Monocromática cálida» por defecto: blanco cálido, greige, travertino claro, roble claro y negro
+    mate como acento;
+  - cocina de roble y travertino con península en cascada, banquetas de bouclé, colgantes opalinos, horno,
+    nevera y lavavajillas integrados, grifería de latón cepillado y luz bajo repisas;
+  - baños en travertino a toda altura, duchas a nivel con mampara de perfil negro, nichos iluminados,
+    muebles suspendidos y espejos con luz indirecta;
+  - habitaciones con cama de plataforma en roble, cabecero tapizado, mesas de noche suspendidas con luz y
+    armarios hasta el cielo;
+  - exterior conceptual con HDRI fotográfico y árboles 3D; escenas de día y atardecer;
+  - materiales PBR propios con color, relieve y rugosidad (créditos en `CREDITOS.md`).
 - **Lo mismo que en el 104:** maqueta, recorrido de 12 capítulos, caminata con colisiones, puntos de
   información, acabados en vivo y entorno exterior conceptual.
 

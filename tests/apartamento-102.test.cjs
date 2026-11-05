@@ -127,7 +127,7 @@ test('con el mobiliario puesto se llega caminando a todos los espacios y al balc
       const kk = b * nx + a; if (!seen[kk] && libre(x0 + a * st, y0 + b * st)) { seen[kk] = 1; q.push(kk); }
     }
   }
-  const puntos = { cocina: [1.3, 5.8], nevera: [3.2, 6.5], barra: [1.0, 3.75], paso_barra: [2.0, 4.6], despensa_frente: [1.2, 5.9], sala: [1.5, 0.75], hall: [4.0, 4.2], habitacion_2: [4.0, 2.8], escritorio: [4.9, 1.3],
+  const puntos = { cocina: [1.3, 5.8], nevera: [3.2, 6.5], barra: [1.0, 3.75], paso_barra: [2.0, 4.6], despensa_frente: [1.2, 5.9], sala: [1.5, 0.75], hall: [4.0, 4.2], habitacion_2: [4.0, 2.8], comoda_frente: [4.9, 1.3],
     principal: [5.65, 2.5], ventana_principal: [6.0, 0.6], bano_principal: [5.9, 5.3], vestier: [7.0, 5.5], bano_social: [4.3, 5.2], ropas: [3.1, 5.05], balcon: [1.9, -0.8], balcon_fondo: [1.75, -1.4] };
   for (const [k, [x, y]] of Object.entries(puntos)) assert(seen[id(x, y)], `se llega a ${k}`);
 });
@@ -162,6 +162,26 @@ test('modelo 3D: el ingreso mide al menos 0,90 m entre la despensa y el mesón, 
   for (const p of m.pasos) assert(p >= 0.90, `paso de ingreso medido en 3D: ${p}`);
   assert(m.barra >= 0.895, `paso entre la barra y el tabique: ${m.barra}`); assert(m.eje >= 0.845, `eje mesa–televisor: ${m.eje}`);
   for (const n of ['MOB_Sofa', 'MOB_Butaca_sala', 'MOB_Butaca_principal']) assert(m.modelos[n] > 0, `${n} cargado`);
+});
+
+test('presentación: texturas PBR propias, exterior con HDRI y árboles 3D, día/atardecer, calidad y puerta oculta de ropas', async t => {
+  const page = await open(t);
+  for (const n of ['meson', 'gabinete_cocina', 'piso_madera', 'revestimiento_bano']) {
+    const m = await page.evaluate(n => APTO_API.mat(n), n);
+    assert(m.map && m.normal && m.rough, `${n} con mapas de color, relieve y rugosidad`);
+  }
+  assert((await page.evaluate(() => APTO_API.mat('tela_silla'))).fisico, 'telas con material físico (sheen)');
+  await page.evaluate(() => APTO_API.setMode('walk'));
+  await page.waitForFunction(() => APTO_API.entorno().listo && !APTO_API.state.flying, null, { timeout: 180000 });
+  const e = await page.evaluate(() => APTO_API.entorno());
+  assert(e.hdr && e.envHDR && e.arboles >= 4, `exterior cargado: ${JSON.stringify(e)}`);
+  await page.evaluate(() => APTO_API.setHora('atardecer')); assert.equal((await page.evaluate(() => APTO_API.state)).hora, 'atardecer');
+  await page.evaluate(() => APTO_API.setHora('dia')); assert.equal((await page.evaluate(() => APTO_API.state)).hora, 'dia');
+  await page.evaluate(() => APTO_API.setQuality('baja')); assert.equal((await page.evaluate(() => APTO_API.state)).quality, 'baja');
+  await page.evaluate(() => APTO_API.pose(5.0, 1.5, 1.6, 5.0, 3.0, 1.4));
+  await page.waitForFunction(() => APTO_API.puertas()[0] < 0.2, null, { timeout: 180000 });   // lejos, la puerta de ropas se cierra
+  await page.evaluate(() => APTO_API.pose(3.1, 4.25, 1.6, 3.1, 5.6, 1.2));
+  await page.waitForFunction(() => APTO_API.puertas()[0] > 0.8, null, { timeout: 180000 });   // cerca, se abre
 });
 
 test('el visor rotula la propuesta y ofrece espacios, puntos y leyenda', async t => {
@@ -245,8 +265,8 @@ test('recorrido de 12 capítulos: visita todos los espacios, se pausa y se explo
 
 test('acabados y responsive en teléfono', async t => {
   const page = await open(t, 390, 844);
-  assert.equal((await page.evaluate(() => APTO_API.state)).preset, 'monocromatica', 'la propuesta abre en monocromática');
-  for (const id of ['calida', 'sofisticada', 'luminosa']) { await page.evaluate(v => APTO_API.setPreset(v), id); assert.equal((await page.evaluate(() => APTO_API.state)).preset, id); }
+  assert.equal((await page.evaluate(() => APTO_API.state)).preset, 'calida_premium', 'la propuesta abre en monocromática cálida');
+  for (const id of ['monocromatica', 'calida', 'sofisticada', 'luminosa']) { await page.evaluate(v => APTO_API.setPreset(v), id); assert.equal((await page.evaluate(() => APTO_API.state)).preset, id); }
   const box = sel => page.locator(sel).evaluate(e => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, r: r.right, b: r.bottom }; });
   const card = await box('#card'), banner = await box('#propBanner'), modes = await box('#modes'), panel = await box('#panel');
   assert(card.w <= 330 && card.h <= 110); assert(panel.h <= 50);

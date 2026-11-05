@@ -246,7 +246,7 @@ function cuadro({ fondo, a, b, c, seed = 101 }) {
 // Pasto del entorno conceptual.
 function pasto({ seed = 111 }) {
   const N = 512, F = field(seed, 256, 6), G = field(seed + 1, 256, 3);
-  const a = hex('#617a45'), b = hex('#7f9150'), c = hex('#455d36');
+  const a = hex('#7c9757'), b = hex('#9aac63'), c = hex('#5b7546');
   return build(N, N, (u, v, px) => {
     const x = u * 256, y = v * 256, n = S(F, x * 8, y * 8), m = S(G, x, y);
     const stripe = 0.5 + 0.5 * Math.sin(u * Math.PI * 6);   // franjas de corte suaves

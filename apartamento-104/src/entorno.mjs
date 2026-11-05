@@ -45,7 +45,7 @@ export function crearEntorno({ sunDir, W, H, balcon }) {
     const m = new THREE.Mesh(hedgeGeo, hedgeMat); m.scale.set(w, h, d); m.position.set(x, Y + h / 2, z); m.castShadow = m.receiveShadow = true; g.add(m);
   }
   // arbustos orgánicos (icosaedro deformado, sombreado suave)
-  const bushGeo = new THREE.IcosahedronGeometry(1, 3); const bp = bushGeo.attributes.position;
+  const bushGeo = new THREE.IcosahedronGeometry(1, 4); const bp = bushGeo.attributes.position;
   for (let i = 0; i < bp.count; i++) { const v = new THREE.Vector3().fromBufferAttribute(bp, i); const k = 0.82 + 0.3 * Math.abs(Math.sin(v.x * 5.1 + v.y * 3.7) * Math.cos(v.z * 4.3)); bp.setXYZ(i, v.x * k, v.y * k, v.z * k); }
   bushGeo.computeVertexNormals();
   const NB = 34;
@@ -56,7 +56,7 @@ export function crearEntorno({ sunDir, W, H, balcon }) {
     p.set(Math.cos(a) * r, Y + 0.25, Math.sin(a) * r + 2); if (Math.abs(p.x) < 5.5 && p.z > -5 && p.z < 6.5) p.z += 8;
     const k = 0.45 + rnd() * 0.75; s.set(k * 1.3, k * 0.85, k * 1.1);
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 6); M.compose(p, q, s); bushes.setMatrixAt(i, M);
-    bushes.setColorAt(i, c.setHSL(0.22 + rnd() * 0.08, 0.38, 0.2 + rnd() * 0.1));
+    bushes.setColorAt(i, c.setHSL(0.22 + rnd() * 0.08, 0.38, 0.27 + rnd() * 0.1));
   }
   bushes.castShadow = true; bushes.receiveShadow = true; g.add(bushes);
 
@@ -77,7 +77,7 @@ export function crearEntorno({ sunDir, W, H, balcon }) {
       const h = hMin + rnd() * (hMax - hMin), w = h * (0.2 + rnd() * 0.06), rot = rnd() * 6;
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot);
       M.compose(p.set(x, Y + h * 0.3, z), q, s.set(1 + h * 0.02, h * 0.6, 1 + h * 0.02)); trunk.setMatrixAt(n, M);
-      const hue = 0.28 + rnd() * 0.05, sat = 0.28 + rnd() * 0.12, lum = 0.13 + rnd() * 0.06;
+      const hue = 0.28 + rnd() * 0.05, sat = 0.28 + rnd() * 0.12, lum = 0.19 + rnd() * 0.07;
       tiers.forEach((t, k) => {
         const f = k / (tiersN - 1), ww = w * (1 - f * 0.75), hh = h * (0.34 - f * 0.12), yy = Y + h * (0.3 + f * 0.62) + hh / 2;
         M.compose(p.set(x, yy, z), q, s.set(ww, hh, ww)); t.setMatrixAt(n, M); t.setColorAt(n, c.setHSL(hue, sat, lum + f * 0.05));

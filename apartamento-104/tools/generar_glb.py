@@ -628,11 +628,11 @@ def plant(m, x, y, z0, h, spread, pot_r, pot_h, pot='maceta'):
     CY(m, 'cesped_maceta', x, y, pot_r * 0.94, z0 + pot_h - 0.03, 0.01, seg=24)
     for i in range(3):
         CY(m, 'madera_mueble', x + rng.uniform(-0.03, 0.03), y + rng.uniform(-0.03, 0.03), 0.008, z0 + pot_h, h * rng.uniform(0.5, 0.8), seg=6)
-    for i in range(16):
-        a = rng.uniform(0, 2 * math.pi); rr = spread * math.sqrt(rng.uniform(0.15, 1))
-        zz = z0 + pot_h + h * rng.uniform(0.35, 1.0)
-        SP(m, 'planta' if i % 3 else 'planta_2', x + rr * math.cos(a), y + rr * math.sin(a), zz, 0.09 * spread / 0.3 + 0.03,
-           sx=rng.uniform(0.9, 1.6), sy=rng.uniform(0.5, 1.0), sz=0.35, seg=6)
+    for i in range(30):   # follaje en racimos ovalados
+        a = rng.uniform(0, 2 * math.pi); hf = rng.uniform(0.3, 1.0); rr = spread * math.sqrt(rng.uniform(0.05, 1)) * (0.5 + 0.5 * math.sin(hf * math.pi))
+        zz = z0 + pot_h + h * hf
+        SP(m, 'planta' if i % 3 else 'planta_2', x + rr * math.cos(a), y + rr * math.sin(a), zz, (0.05 * spread / 0.3 + 0.02),
+           sx=rng.uniform(0.8, 1.3), sy=rng.uniform(0.8, 1.3), sz=rng.uniform(0.8, 1.2), seg=7)
 
 
 def books(m, x0, y, x1, z0, depth=0.20, along='x', facing=1):
@@ -1039,7 +1039,9 @@ if PROP:
     for k, (hx0, hx1) in enumerate(((cx0, mid + 0.03), (mid - 0.03, cx1))):     # dos hojas sobre la mitad fija
         za = z0_ + 0.035 + k * 0.05
         p0, p1 = P(hx0, 0), P(hx1, 0)
-        m.box('marco', p0[0], 0.03, za, p1[0], hp - 0.05, za + 0.04)
+        for (fx0, fy0, fx1, fy1) in ((p0[0], 0.03, p0[0] + 0.05, hp - 0.05), (p1[0] - 0.05, 0.03, p1[0], hp - 0.05),
+                                     (p0[0], 0.03, p1[0], 0.10), (p0[0], hp - 0.12, p1[0], hp - 0.05)):   # bastidor de la hoja
+            m.box('marco', fx0, fy0, za, fx1, fy1, za + 0.04)
         m.box('vidrio', p0[0] + 0.05, 0.10, za + 0.014, p1[0] - 0.05, hp - 0.12, za + 0.026)
         m.box('cromo', p1[0] - 0.09 if k == 0 else p0[0] + 0.07, 0.95, za - 0.01, p1[0] - 0.07 if k == 0 else p0[0] + 0.09, 1.25, za)
     node('PROP_Puerta_ventana_sala', m, False, src + ' Puerta-ventana corrediza en el vano de 2,475 m del DWG.', group='propuesta')
@@ -1062,9 +1064,9 @@ if PROP:
         CY(m, 'metal_negro', 2.07, -1.15, 0.015, z, 0.42, seg=8); CY(m, 'metal_negro', 2.07, -1.15, 0.16, z, 0.01, seg=24)
         LA(m, 'ceramica_deco', 2.07, -1.15, z + 0.45, [(0.04, 0), (0.05, 0.06), (0.03, 0.12)], seg=16)
         RB(m, 'maceta', *BAL_PLANT, z, z + 0.42, 0.02)                                # jardinera con gramíneas
-        for i in range(14):
-            px = rng.uniform(0.22, 0.42); py = rng.uniform(-1.55, -0.9)
-            SP(m, 'planta_2' if i % 2 else 'planta', px, py, z + 0.55 + rng.uniform(0, 0.2), 0.10, sx=0.6, sy=0.6, sz=2.2, seg=8)
+        for i in range(34):   # gramíneas
+            px = rng.uniform(0.21, 0.43); py = rng.uniform(-1.56, -0.89)
+            SP(m, 'planta_2' if i % 2 else 'planta', px, py, z + 0.48 + rng.uniform(0, 0.12), 0.045, sx=0.45, sy=0.45, sz=rng.uniform(3, 5), seg=6)
         RB(m, 'textil_tapete', 1.45, -1.50, 2.58, -0.18, z, z + 0.008, 0.004, k=1)
 
     furn('MOB_Balcon', balcon, [BAL_SET, BAL_PLANT], nota='Mobiliario de presentación ilustrativo del balcón propuesto', group='propuesta_mobiliario')

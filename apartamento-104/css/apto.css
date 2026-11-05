@@ -52,7 +52,7 @@ body:not(.has-balcony) .card .chip.prop { display: none; }
 .caption span { font: 500 clamp(26px, 2.6vw, 38px)/1.05 var(--serif); }
 
 /* panel de opciones: tarjeta lateral pequeña */
-.panel { position: absolute; z-index: 12; right: var(--pad); top: 50%; transform: translateY(-50%); width: clamp(236px, 17vw, 270px); max-height: calc(100svh - 190px); overflow: auto;
+.panel { position: absolute; z-index: 14; right: var(--pad); top: 50%; transform: translateY(-50%); width: clamp(236px, 17vw, 270px); max-height: calc(100svh - 190px); overflow: auto;
   padding: 18px 18px 16px; background: rgba(5, 9, 16, .86); border: 1px solid rgba(255, 255, 255, .1); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .panel-toggle { display: none; }
 #panelBody { display: block; }

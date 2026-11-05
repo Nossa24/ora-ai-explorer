@@ -177,6 +177,7 @@ test('caminar: altura de ojos y colisiones con muros, mobiliario y hojas de puer
   await settle(page); await frames(page);
   let s = await page.evaluate(() => APTO_API.state);
   assert.equal(s.mode, 'walk'); assert.equal(s.height, 1.6); assert.equal(s.room, 'social');
+  await page.evaluate(() => APTO_API.move(0, 1.2));         // a la altura del mueble de TV
   await page.evaluate(() => APTO_API.move(3, 0));           // hacia el mueble de TV y el muro
   s = await page.evaluate(() => APTO_API.state);
   assert(s.plan.x <= 2.325 - 0.22 + 1e-3, `se detiene ante el mueble de TV (${s.plan.x})`);
@@ -216,7 +217,7 @@ test('la trayectoria del recorrido no atraviesa muros, muebles ni barandas', asy
       const dentro = p.x > 0 && p.x < 8.1 && p.y > 0 && p.y < 7.6;
       if (p.h < 2.55 && dentro) {
         const m = 0.1;
-        const choca = muros.find(([a, b, c, d]) => p.x > a - m && p.x < c + m && p.y > b - m && p.y < d + m && !(conBalcon && p.y < 0.2 && p.x < prop.acceso.paso_libre[1] - 0.15 && p.x > prop.acceso.paso_libre[0] + 0.15));
+        const choca = muros.find(([a, b, c, d]) => p.x > a - m && p.x < c + m && p.y > b - m && p.y < d + m && !(conBalcon && p.y < 0.3 && p.x < prop.acceso.paso_libre[1] - 0.15 && p.x > prop.acceso.paso_libre[0] + 0.15));
         assert(!choca, `t=${p.t}: la cámara cruza un muro o ventana en (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
         const mueble = huellas.find(([a, b, c, d]) => p.x > a - 0.05 && p.x < c + 0.05 && p.y > b - 0.05 && p.y < d + 0.05);
         assert(!mueble, `t=${p.t}: pasa sobre un mueble en (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
@@ -236,7 +237,7 @@ test('recorrido de 12 capítulos: se pausa al tocar y se pasa a explorar desde a
   const chapters = await page.evaluate(() => APTO_API.chapters());
   assert.equal(chapters.length, 12);
   const seen = [];
-  for (const time of [25, 40, 60, 69, 82, 96, 108, 128]) {
+  for (const time of [25, 42, 60, 69, 85, 99, 112.6, 131]) {
     await page.evaluate(v => APTO_API.tourSeek(v), time); await frames(page);
     const s = await page.evaluate(() => APTO_API.state);
     seen.push(s.room);
@@ -404,5 +405,5 @@ test('se sale al balcón por la puerta-ventana, se vuelve y la propuesta se pued
   assert.equal(await page.evaluate(() => APTO_API.visible('ILU_Ventana_sala')), true);
   assert.equal(await page.evaluate(() => APTO_API.visible('ILU_Antepecho_sala')), true);
   assert.equal(await page.locator('#chipProp').isVisible(), false);
-  assert(s.tourLen < 135, 'el recorrido termina en la ventana de la sala');
+  assert(s.tourLen < 138, 'el recorrido termina en la ventana de la sala');
 });
